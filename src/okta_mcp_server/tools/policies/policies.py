@@ -8,17 +8,10 @@
 from typing import Any, Dict, Optional
 
 from loguru import logger
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
-from okta_mcp_server.utils.elicitation import DeactivateConfirmation, DeleteConfirmation, elicit_or_fallback
-from okta_mcp_server.utils.messages import (
-    DEACTIVATE_POLICY,
-    DEACTIVATE_POLICY_RULE,
-    DELETE_POLICY,
-    DELETE_POLICY_RULE,
-)
 
 
 @mcp.tool()
@@ -29,7 +22,7 @@ async def list_policies(
     q: Optional[str] = None,
     limit: Optional[int] = 20,
     after: Optional[str] = None,
-) -> Dict[str, Any]:
+):
     """List all the policies from the Okta organization.
 
     Parameters:
@@ -62,11 +55,9 @@ async def list_policies(
 
     try:
         okta_client = await get_okta_client(manager)
-        params = {"type": type, "limit": limit}
+        params = {"type": type}
         if status:
             params["status"] = status
-        if q:
-            params["q"] = q
         if after:
             params["after"] = after
 
@@ -92,7 +83,7 @@ async def list_policies(
 
 
 @mcp.tool()
-async def get_policy(ctx: Context, policy_id: str) -> Optional[Dict[str, Any]]:
+async def get_policy(ctx: Context, policy_id: str):
     """Retrieve a specific policy by ID.
 
     Parameters:
@@ -119,7 +110,7 @@ async def get_policy(ctx: Context, policy_id: str) -> Optional[Dict[str, Any]]:
 
 
 @mcp.tool()
-async def create_policy(ctx: Context, policy_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+async def create_policy(ctx: Context, policy_data: Dict[str, Any]):
     """Create a new policy.
 
     Parameters:
@@ -154,7 +145,7 @@ async def create_policy(ctx: Context, policy_data: Dict[str, Any]) -> Optional[D
 
 
 @mcp.tool()
-async def update_policy(ctx: Context, policy_id: str, policy_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+async def update_policy(ctx: Context, policy_id: str, policy_data: Dict[str, Any]):
     """Update an existing policy.
 
     Parameters:
@@ -182,10 +173,8 @@ async def update_policy(ctx: Context, policy_id: str, policy_data: Dict[str, Any
 
 
 @mcp.tool()
-async def delete_policy(ctx: Context, policy_id: str) -> Dict[str, Any]:
+async def delete_policy(ctx: Context, policy_id: str):
     """Delete a policy.
-
-    The user will be asked for confirmation before the deletion proceeds.
 
     Parameters:
         policy_id (str, required): The ID of the policy to delete.
@@ -193,23 +182,10 @@ async def delete_policy(ctx: Context, policy_id: str) -> Dict[str, Any]:
     Returns:
         Dict with success status.
     """
-    logger.warning(f"Deletion requested for policy {policy_id}")
-
-    outcome = await elicit_or_fallback(
-        ctx,
-        message=DELETE_POLICY.format(policy_id=policy_id),
-        schema=DeleteConfirmation,
-        auto_confirm_on_fallback=True,
-    )
-
-    if not outcome.confirmed:
-        logger.info(f"Policy deletion cancelled for {policy_id}")
-        return {"message": "Policy deletion cancelled by user."}
-
     manager = ctx.request_context.lifespan_context.okta_auth_manager
+    okta_client = await get_okta_client(manager)
 
     try:
-        okta_client = await get_okta_client(manager)
         _, err = await okta_client.delete_policy(policy_id)
 
         if err:
@@ -224,7 +200,7 @@ async def delete_policy(ctx: Context, policy_id: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-async def activate_policy(ctx: Context, policy_id: str) -> Dict[str, Any]:
+async def activate_policy(ctx: Context, policy_id: str):
     """Activate a policy.
 
     Parameters:
@@ -251,10 +227,8 @@ async def activate_policy(ctx: Context, policy_id: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-async def deactivate_policy(ctx: Context, policy_id: str) -> Dict[str, Any]:
+async def deactivate_policy(ctx: Context, policy_id: str):
     """Deactivate a policy.
-
-    The user will be asked for confirmation before the deactivation proceeds.
 
     Parameters:
         policy_id (str, required): The ID of the policy to deactivate.
@@ -262,23 +236,10 @@ async def deactivate_policy(ctx: Context, policy_id: str) -> Dict[str, Any]:
     Returns:
         Dict with success status.
     """
-    logger.info(f"Deactivation requested for policy {policy_id}")
-
-    outcome = await elicit_or_fallback(
-        ctx,
-        message=DEACTIVATE_POLICY.format(policy_id=policy_id),
-        schema=DeactivateConfirmation,
-        auto_confirm_on_fallback=True,
-    )
-
-    if not outcome.confirmed:
-        logger.info(f"Policy deactivation cancelled for {policy_id}")
-        return {"message": "Policy deactivation cancelled by user."}
-
     manager = ctx.request_context.lifespan_context.okta_auth_manager
+    okta_client = await get_okta_client(manager)
 
     try:
-        okta_client = await get_okta_client(manager)
         _, err = await okta_client.deactivate_policy(policy_id)
 
         if err:
@@ -293,7 +254,7 @@ async def deactivate_policy(ctx: Context, policy_id: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-async def list_policy_rules(ctx: Context, policy_id: str) -> Dict[str, Any]:
+async def list_policy_rules(ctx: Context, policy_id: str):
     """List all rules for a specific policy.
 
     Parameters:
@@ -332,7 +293,7 @@ async def list_policy_rules(ctx: Context, policy_id: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-async def get_policy_rule(ctx: Context, policy_id: str, rule_id: str) -> Optional[Dict[str, Any]]:
+async def get_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     """Retrieve a specific policy rule.
 
     Parameters:
@@ -360,7 +321,7 @@ async def get_policy_rule(ctx: Context, policy_id: str, rule_id: str) -> Optiona
 
 
 @mcp.tool()
-async def create_policy_rule(ctx: Context, policy_id: str, rule_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+async def create_policy_rule(ctx: Context, policy_id: str, rule_data: Dict[str, Any]):
     """Create a new rule for a policy.
 
     Parameters:
@@ -395,7 +356,7 @@ async def create_policy_rule(ctx: Context, policy_id: str, rule_data: Dict[str, 
 @mcp.tool()
 async def update_policy_rule(
     ctx: Context, policy_id: str, rule_id: str, rule_data: Dict[str, Any]
-) -> Optional[Dict[str, Any]]:
+):
     """Update an existing policy rule.
 
     Parameters:
@@ -424,10 +385,8 @@ async def update_policy_rule(
 
 
 @mcp.tool()
-async def delete_policy_rule(ctx: Context, policy_id: str, rule_id: str) -> Dict[str, Any]:
+async def delete_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     """Delete a policy rule.
-
-    The user will be asked for confirmation before the deletion proceeds.
 
     Parameters:
         policy_id (str, required): The ID of the policy.
@@ -436,23 +395,10 @@ async def delete_policy_rule(ctx: Context, policy_id: str, rule_id: str) -> Dict
     Returns:
         Dict with success status.
     """
-    logger.warning(f"Deletion requested for policy rule {rule_id} in policy {policy_id}")
-
-    outcome = await elicit_or_fallback(
-        ctx,
-        message=DELETE_POLICY_RULE.format(rule_id=rule_id, policy_id=policy_id),
-        schema=DeleteConfirmation,
-        auto_confirm_on_fallback=True,
-    )
-
-    if not outcome.confirmed:
-        logger.info(f"Policy rule deletion cancelled for {rule_id}")
-        return {"message": "Policy rule deletion cancelled by user."}
-
     manager = ctx.request_context.lifespan_context.okta_auth_manager
+    okta_client = await get_okta_client(manager)
 
     try:
-        okta_client = await get_okta_client(manager)
         _, err = await okta_client.delete_policy_rule(policy_id, rule_id)
 
         if err:
@@ -467,7 +413,7 @@ async def delete_policy_rule(ctx: Context, policy_id: str, rule_id: str) -> Dict
 
 
 @mcp.tool()
-async def activate_policy_rule(ctx: Context, policy_id: str, rule_id: str) -> Dict[str, Any]:
+async def activate_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     """Activate a policy rule.
 
     Parameters:
@@ -495,7 +441,7 @@ async def activate_policy_rule(ctx: Context, policy_id: str, rule_id: str) -> Di
 
 
 @mcp.tool()
-async def deactivate_policy_rule(ctx: Context, policy_id: str, rule_id: str) -> Dict[str, Any]:
+async def deactivate_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     """Deactivate a policy rule.
 
     Parameters:
@@ -505,23 +451,10 @@ async def deactivate_policy_rule(ctx: Context, policy_id: str, rule_id: str) -> 
     Returns:
         Dict with success status.
     """
-    logger.info(f"Deactivation requested for policy rule {rule_id} in policy {policy_id}")
-
-    outcome = await elicit_or_fallback(
-        ctx,
-        message=DEACTIVATE_POLICY_RULE.format(rule_id=rule_id, policy_id=policy_id),
-        schema=DeactivateConfirmation,
-        auto_confirm_on_fallback=True,
-    )
-
-    if not outcome.confirmed:
-        logger.info(f"Policy rule deactivation cancelled for {rule_id}")
-        return {"message": "Policy rule deactivation cancelled by user."}
-
     manager = ctx.request_context.lifespan_context.okta_auth_manager
+    okta_client = await get_okta_client(manager)
 
     try:
-        okta_client = await get_okta_client(manager)
         _, err = await okta_client.deactivate_policy_rule(policy_id, rule_id)
 
         if err:

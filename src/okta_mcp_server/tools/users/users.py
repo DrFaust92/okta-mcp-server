@@ -8,12 +8,10 @@
 from typing import Optional
 
 from loguru import logger
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
-from okta_mcp_server.utils.elicitation import DeactivateConfirmation, DeleteConfirmation, elicit_or_fallback
-from okta_mcp_server.utils.messages import DEACTIVATE_USER, DELETE_USER
 from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, paginate_all_results
 
 
@@ -26,7 +24,7 @@ async def list_users(
     fetch_all: bool = False,
     after: Optional[str] = None,
     limit: Optional[int] = None,
-) -> dict:
+):
     """List all the users from the Okta organization with pagination support.
     If search, filter, or q is specified, it will list only those users that satisfy the condition.
     Use after and limit for pagination.
@@ -116,7 +114,7 @@ async def list_users(
 
 
 @mcp.tool()
-async def get_user_profile_attributes(ctx: Context = None) -> list:
+async def get_user_profile_attributes(ctx: Context = None):
     """List all user profile attributes supported by your Okta org.
     This is helpful in case you need to check if the user profile attribute is valid.
     The prompt can contain non existent search terms, in which case we should seek clarification from the user
@@ -153,7 +151,47 @@ async def get_user_profile_attributes(ctx: Context = None) -> list:
 
 
 @mcp.tool()
-async def get_user(user_id: str, ctx: Context = None) -> list:
+async def list_user_groups(
+    user_id: str,
+    ctx: Context = None,
+):
+    """List all groups that a user belongs to in the Okta organization.
+
+    This tool retrieves all groups for a specific user by their ID from the Okta organization.
+
+    Parameters:
+        user_id (str, required): The ID of the user to retrieve groups for.
+
+    Returns:
+        List containing the groups the user belongs to.
+    """
+    logger.info(f"Listing groups for user: {user_id}")
+
+    manager = ctx.request_context.lifespan_context.okta_auth_manager
+
+    try:
+        client = await get_okta_client(manager)
+        logger.debug(f"Calling Okta API to list groups for user {user_id}")
+
+        groups, _, err = await client.list_user_groups(user_id)
+
+        if err:
+            logger.error(f"Okta API error while listing groups for user {user_id}: {err}")
+            return {"error": f"Error: {err}"}
+
+        if not groups:
+            logger.info(f"No groups found for user {user_id}")
+            return []
+
+        logger.info(f"Successfully retrieved {len(groups)} groups for user {user_id}")
+        return [group for group in groups]
+    except Exception as e:
+        logger.error(f"Exception while listing groups for user {user_id}: {type(e).__name__}: {e}")
+        return [f"Exception: {e}"]
+
+
+@mcp.tool()
+async def get_user(user_id: str, ctx: Context = None):
     """Get a user by ID from the Okta organization
 
     This tool retrieves a user by their ID from the Okta organization.
@@ -182,7 +220,7 @@ async def get_user(user_id: str, ctx: Context = None) -> list:
 
 
 @mcp.tool()
-async def create_user(profile: dict, ctx: Context = None) -> list:
+async def create_user(profile: dict, ctx: Context = None):
     """Create a user in the Okta organization.
 
     This tool creates a new user in the Okta organization with the provided profile.
@@ -220,7 +258,7 @@ async def create_user(profile: dict, ctx: Context = None) -> list:
 
 
 @mcp.tool()
-async def update_user(user_id: str, profile: dict, ctx: Context = None) -> list:
+async def update_user(user_id: str, profile: dict, ctx: Context = None):
     """Update a user in the Okta organization.
 
     This tool updates an existing user in the Okta organization with the provided profile.
@@ -255,31 +293,19 @@ async def update_user(user_id: str, profile: dict, ctx: Context = None) -> list:
 
 
 @mcp.tool()
-async def deactivate_user(user_id: str, ctx: Context = None) -> list:
+async def deactivate_user(user_id: str, ctx: Context = None):
     """Deactivates a user from the Okta organization.
 
     This tool deactivates a user from the Okta organization by their ID.
-    The user will be asked for confirmation before the deactivation proceeds.
     Deactivating the user is a prerequisite for deleting the user.
 
     Parameters:
-        user_id (str, required): The ID of the user to deactivate.
+        user_id (str, required): The ID of the user to delete.
 
     Returns:
         List containing the result of the deactivation operation.
     """
-    logger.info(f"Deactivation requested for user: {user_id}")
-
-    outcome = await elicit_or_fallback(
-        ctx,
-        message=DEACTIVATE_USER.format(user_id=user_id),
-        schema=DeactivateConfirmation,
-        auto_confirm_on_fallback=True,
-    )
-
-    if not outcome.confirmed:
-        logger.info(f"User deactivation cancelled for {user_id}")
-        return [{"message": "User deactivation cancelled by user."}]
+    logger.info(f"Deactivating user with ID: {user_id}")
 
     manager = ctx.request_context.lifespan_context.okta_auth_manager
 
@@ -301,11 +327,10 @@ async def deactivate_user(user_id: str, ctx: Context = None) -> list:
 
 
 @mcp.tool()
-async def delete_deactivated_user(user_id: str, ctx: Context = None) -> list:
+async def delete_deactivated_user(user_id: str, ctx: Context = None):
     """Delete a user from the Okta organization who has already been deactivated or deprovisioned.
 
-    This tool permanently deletes a deactivated/deprovisioned user. The user will be
-    asked for confirmation before the deletion proceeds.
+    This tool deletes a user from the Okta organization by their ID who has already been deactivated or deprovisioned.
 
     Parameters:
         user_id (str, required): The ID of the deactivated or deprovisioned user to delete.
@@ -313,18 +338,7 @@ async def delete_deactivated_user(user_id: str, ctx: Context = None) -> list:
     Returns:
         List containing the result of the deletion operation.
     """
-    logger.info(f"Deletion requested for deactivated user: {user_id}")
-
-    outcome = await elicit_or_fallback(
-        ctx,
-        message=DELETE_USER.format(user_id=user_id),
-        schema=DeleteConfirmation,
-        auto_confirm_on_fallback=True,
-    )
-
-    if not outcome.confirmed:
-        logger.info(f"User deletion cancelled for {user_id}")
-        return [{"message": "User deletion cancelled by user."}]
+    logger.info(f"Deleting deactivated user with ID: {user_id}")
 
     manager = ctx.request_context.lifespan_context.okta_auth_manager
 

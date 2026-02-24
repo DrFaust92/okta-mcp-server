@@ -8,7 +8,7 @@
 from typing import Optional
 
 from loguru import logger
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
@@ -25,12 +25,12 @@ async def get_logs(
     until: Optional[str] = None,
     filter: Optional[str] = None,
     q: Optional[str] = None,
-) -> dict:
+):
     """Retrieve system logs from the Okta organization with pagination support.
 
     This tool retrieves system logs from the Okta organization.
 
-    Parameters:
+    Parameters:ye
         fetch_all (bool, optional): If True, automatically fetch all pages of results. Default: False.
         after (str, optional): Pagination cursor for fetching results after this point.
         limit (int, optional): Maximum number of log entries to return per page (min 20, max 100).

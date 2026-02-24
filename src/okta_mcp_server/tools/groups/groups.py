@@ -8,12 +8,10 @@
 from typing import Optional
 
 from loguru import logger
-from mcp.server.fastmcp import Context
+from fastmcp import Context
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
-from okta_mcp_server.utils.elicitation import DeleteConfirmation, elicit_or_fallback
-from okta_mcp_server.utils.messages import DELETE_GROUP
 from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, paginate_all_results
 
 
@@ -26,7 +24,7 @@ async def list_groups(
     fetch_all: bool = False,
     after: Optional[str] = None,
     limit: Optional[int] = None,
-) -> dict:
+):
     """List all the groups from the Okta organization with pagination support.
     If search, filter, or q is specified, it will list only those groups that satisfy the condition.
 
@@ -105,7 +103,7 @@ async def list_groups(
 
 
 @mcp.tool()
-async def get_group(group_id: str, ctx: Context = None) -> list:
+async def get_group(group_id: str, ctx: Context = None):
     """Get a group by ID from the Okta organization
 
     This tool retrieves a group by its ID from the Okta organization.
@@ -138,7 +136,7 @@ async def get_group(group_id: str, ctx: Context = None) -> list:
 
 
 @mcp.tool()
-async def create_group(profile: dict, ctx: Context = None) -> list:
+async def create_group(profile: dict, ctx: Context = None):
     """Create a group in the Okta organization.
 
     This tool creates a new group in the Okta organization with the provided profile.
@@ -175,73 +173,38 @@ async def create_group(profile: dict, ctx: Context = None) -> list:
 
 
 @mcp.tool()
-async def delete_group(group_id: str, ctx: Context = None) -> list:
+def delete_group(group_id: str, ctx: Context = None):
     """Delete a group by ID from the Okta organization.
 
-    This tool deletes a group by its ID from the Okta organization.
-    The user will be asked for confirmation before the deletion proceeds.
+    This tool deletes a group by its ID from the Okta organization, but requires confirmation. Wait for the
+    user to confirm the deletion before proceeding.
+
+    IMPORTANT: After calling this function, you MUST STOP and wait for the human user to type 'DELETE'
+    as confirmation. DO NOT automatically call confirm_delete_group afterward.
 
     Parameters:
         group_id (str, required): The ID of the group to delete.
 
     Returns:
-        List containing the result of the deletion operation.
+        List containing the result of the deletion operation or a confirmation request.
     """
-    logger.warning(f"Deletion requested for group {group_id}")
+    logger.warning(f"Deletion requested for group {group_id}, awaiting confirmation")
 
-    fallback_payload = {
-        "confirmation_required": True,
-        "message": (
-            f"To confirm deletion of group {group_id}, please call the "
-            f"'confirm_delete_group' tool with group_id='{group_id}' and "
-            f"confirmation='DELETE'."
-        ),
-        "group_id": group_id,
-        "tool_to_use": "confirm_delete_group",
-    }
+    # Step 1: First prompt - this is handled by the parameter request
 
-    outcome = await elicit_or_fallback(
-        ctx,
-        message=DELETE_GROUP.format(group_id=group_id),
-        schema=DeleteConfirmation,
-        fallback_payload=fallback_payload,
-    )
-
-    if not outcome.used_elicitation:
-        logger.info(f"Elicitation unavailable for group {group_id} — returning fallback confirmation prompt")
-        return [outcome.fallback_response]
-
-    if not outcome.confirmed:
-        logger.info(f"Group deletion cancelled for {group_id}")
-        return [{"message": "Group deletion cancelled by user."}]
-
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
-
-    try:
-        client = await get_okta_client(manager)
-        logger.debug(f"Calling Okta API to delete group {group_id}")
-
-        _, err = await client.delete_group(group_id)
-
-        if err:
-            logger.error(f"Okta API error while deleting group {group_id}: {err}")
-            return [{"error": f"Error: {err}"}]
-
-        logger.info(f"Successfully deleted group: {group_id}")
-        return [{"message": f"Group {group_id} deleted successfully"}]
-    except Exception as e:
-        logger.error(f"Exception while deleting group {group_id}: {type(e).__name__}: {e}")
-        return [{"error": f"Exception: {e}"}]
+    # Step 2: Ask for confirmation
+    return [
+        {
+            "confirmation_required": True,
+            "message": f"To confirm deletion of group {group_id}, please type 'DELETE'",
+            "group_id": group_id,
+        }
+    ]
 
 
 @mcp.tool()
-async def confirm_delete_group(group_id: str, confirmation: str, ctx: Context = None) -> list:
+async def confirm_delete_group(group_id: str, confirmation: str, ctx: Context = None):
     """Confirm and execute group deletion after receiving confirmation.
-
-    .. deprecated::
-        This tool exists for backward compatibility with clients that do not
-        support MCP elicitation.  New clients should rely on the built-in
-        elicitation prompt in ``delete_group`` instead.
 
     This function MUST ONLY be called after the human user has explicitly typed 'DELETE' as confirmation.
     NEVER call this function automatically after delete_group.
@@ -253,8 +216,9 @@ async def confirm_delete_group(group_id: str, confirmation: str, ctx: Context = 
     Returns:
         List containing the result of the deletion operation.
     """
-    logger.info(f"Processing deletion confirmation for group {group_id} (deprecated flow)")
+    logger.info(f"Processing deletion confirmation for group {group_id}")
 
+    # Step 3: Check confirmation and delete if correct
     if confirmation != "DELETE":
         logger.warning(f"Group deletion cancelled for {group_id} - incorrect confirmation")
         return [{"error": "Deletion cancelled. Confirmation 'DELETE' was not provided correctly."}]
@@ -279,7 +243,7 @@ async def confirm_delete_group(group_id: str, confirmation: str, ctx: Context = 
 
 
 @mcp.tool()
-async def update_group(group_id: str, profile: dict, ctx: Context = None) -> list:
+async def update_group(group_id: str, profile: dict, ctx: Context = None):
     """Update a group by ID in the Okta organization.
 
     This tool updates a group by its ID with the provided profile.
@@ -321,7 +285,7 @@ async def list_group_users(
     fetch_all: bool = False,
     after: Optional[str] = None,
     limit: Optional[int] = None,
-) -> dict:
+):
     """List all users in a group by ID from the Okta organization with pagination support.
 
     This tool retrieves all users in a group by its ID from the Okta organization.
@@ -395,7 +359,7 @@ async def list_group_users(
 
 
 @mcp.tool()
-async def list_group_apps(group_id: str, ctx: Context = None) -> list:
+async def list_group_apps(group_id: str, ctx: Context = None):
     """List all applications in a group by ID from the Okta organization.
 
     This tool retrieves all applications in a group by its ID from the Okta organization.
@@ -430,7 +394,7 @@ async def list_group_apps(group_id: str, ctx: Context = None) -> list:
 
 
 @mcp.tool()
-async def add_user_to_group(group_id: str, user_id: str, ctx: Context = None) -> list:
+async def add_user_to_group(group_id: str, user_id: str, ctx: Context = None):
     """Add a user to a group by ID in the Okta organization.
 
     This tool adds a user to a group by its ID in the Okta organization.
@@ -464,7 +428,7 @@ async def add_user_to_group(group_id: str, user_id: str, ctx: Context = None) ->
 
 
 @mcp.tool()
-async def remove_user_from_group(group_id: str, user_id: str, ctx: Context = None) -> list:
+async def remove_user_from_group(group_id: str, user_id: str, ctx: Context = None):
     """Remove a user from a group by ID in the Okta organization.
 
     This tool removes a user from a group by its ID in the Okta organization.
