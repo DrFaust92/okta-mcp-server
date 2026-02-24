@@ -7,12 +7,13 @@
 
 from typing import Optional
 
-from loguru import logger
 from fastmcp import Context
+from loguru import logger
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
 from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, paginate_all_results
+from okta_mcp_server.utils.summarize import summarize_logs
 
 
 @mcp.tool()
@@ -99,10 +100,12 @@ async def get_logs(
             logger.info(
                 f"Successfully retrieved {len(all_logs)} log entries across {pagination_info['pages_fetched']} pages"
             )
-            return create_paginated_response(all_logs, response, fetch_all_used=True, pagination_info=pagination_info)
+            return create_paginated_response(
+                summarize_logs(all_logs), response, fetch_all_used=True, pagination_info=pagination_info
+            )
         else:
             logger.info(f"Successfully retrieved {log_count} system log entries")
-            return create_paginated_response(logs, response, fetch_all_used=fetch_all)
+            return create_paginated_response(summarize_logs(logs), response, fetch_all_used=fetch_all)
 
     except Exception as e:
         logger.error(f"Exception while retrieving system logs: {type(e).__name__}: {e}")

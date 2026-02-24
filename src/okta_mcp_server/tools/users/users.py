@@ -7,12 +7,13 @@
 
 from typing import Optional
 
-from loguru import logger
 from fastmcp import Context
+from loguru import logger
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
 from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, paginate_all_results
+from okta_mcp_server.utils.summarize import summarize_groups, summarize_user, summarize_users
 
 
 @mcp.tool()
@@ -90,23 +91,19 @@ async def list_users(
             logger.info("No users found")
             return create_paginated_response([], response, fetch_all_used=fetch_all)
 
-        # Convert users to the expected format
-        user_items = [(user.profile, user.id) for user in users]
-
         if fetch_all and response and hasattr(response, "has_next") and response.has_next():
             logger.info(f"fetch_all=True, auto-paginating from initial {len(users)} users")
             all_users, pagination_info = await paginate_all_results(response, users)
-            all_user_items = [(user.profile, user.id) for user in all_users]
 
             logger.info(
-                f"Successfully retrieved {len(all_user_items)} users across {pagination_info['pages_fetched']} pages"
+                f"Successfully retrieved {len(all_users)} users across {pagination_info['pages_fetched']} pages"
             )
             return create_paginated_response(
-                all_user_items, response, fetch_all_used=True, pagination_info=pagination_info
+                summarize_users(all_users), response, fetch_all_used=True, pagination_info=pagination_info
             )
         else:
-            logger.info(f"Successfully retrieved {len(user_items)} users")
-            return create_paginated_response(user_items, response, fetch_all_used=fetch_all)
+            logger.info(f"Successfully retrieved {len(users)} users")
+            return create_paginated_response(summarize_users(users), response, fetch_all_used=fetch_all)
 
     except Exception as e:
         logger.error(f"Exception while listing users: {type(e).__name__}: {e}")
@@ -184,7 +181,7 @@ async def list_user_groups(
             return []
 
         logger.info(f"Successfully retrieved {len(groups)} groups for user {user_id}")
-        return [group for group in groups]
+        return summarize_groups(groups)
     except Exception as e:
         logger.error(f"Exception while listing groups for user {user_id}: {type(e).__name__}: {e}")
         return [f"Exception: {e}"]
@@ -213,7 +210,7 @@ async def get_user(user_id: str, ctx: Context = None):
         user = await client.get_user(user_id)
 
         logger.info(f"Successfully retrieved user: {user.profile.email if hasattr(user, 'profile') else user_id}")
-        return [user]
+        return [summarize_user(user)]
     except Exception as e:
         logger.error(f"Exception while getting user {user_id}: {type(e).__name__}: {e}")
         return [f"Exception: {e}"]
@@ -251,7 +248,7 @@ async def create_user(profile: dict, ctx: Context = None):
         logger.info(
             f"Successfully created user: {user.id} ({user.profile.email if hasattr(user, 'profile') else 'N/A'})"
         )
-        return [user]
+        return [summarize_user(user)]
     except Exception as e:
         logger.error(f"Exception while creating user: {type(e).__name__}: {e}")
         return [f"Exception: {e}"]
@@ -286,7 +283,7 @@ async def update_user(user_id: str, profile: dict, ctx: Context = None):
             return [f"Error: {err}"]
 
         logger.info(f"Successfully updated user: {user_id}")
-        return [user]
+        return [summarize_user(user)]
     except Exception as e:
         logger.error(f"Exception while updating user {user_id}: {type(e).__name__}: {e}")
         return [f"Exception: {e}"]
