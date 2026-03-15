@@ -221,3 +221,28 @@ def summarize_policy_rule(rule: Dict[str, Any]) -> Dict[str, Any]:
 def summarize_policy_rules(rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Summarize a list of PolicyRule dicts."""
     return [summarize_policy_rule(r) for r in rules]
+
+
+# ── Group Rules ──────────────────────────────────────────────
+_GROUP_RULE_FIELDS = [
+    "id",
+    "name",
+    "type",
+    "status",
+    "created",
+    "lastUpdated",
+    "conditions",
+    "actions",
+]
+
+
+def summarize_group_rule(rule: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a compact summary of a GroupRule dict."""
+    if not isinstance(rule, dict):
+        rule = _obj_to_dict(rule)
+    return _pick(rule, _GROUP_RULE_FIELDS)
+
+
+def summarize_group_rules(rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Summarize a list of GroupRule dicts."""
+    return [summarize_group_rule(r) for r in rules]
