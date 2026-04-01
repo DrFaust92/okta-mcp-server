@@ -51,7 +51,15 @@ tests/
 .bacon
 .bacon.yml
 
+# Type stubs (dev/type-checking only, not needed at runtime)
+stubs/
+
+# Docker compose (not needed inside the image)
+docker-compose.yml
+Dockerfile
+
 # Other
 dependency_scan.sh
 .python-version
 .ruff.toml
+.env.example
