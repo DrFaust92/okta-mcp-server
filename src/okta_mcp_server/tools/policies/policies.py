@@ -169,7 +169,7 @@ async def update_policy(ctx: Context, policy_id: str, policy_data: Dict[str, Any
     okta_client = await get_okta_client(manager)
 
     try:
-        policy, _, _, err = await okta_client.update_policy(policy_id, policy_data)
+        policy, _, _, err = await okta_client.replace_policy(policy_id, policy_data)
 
         if err:
             logger.error(f"Error updating policy {policy_id}: {err}")
@@ -388,7 +388,7 @@ async def update_policy_rule(
     okta_client = await get_okta_client(manager)
 
     try:
-        rule, _, _, err = await okta_client.update_policy_rule(policy_id, rule_id, rule_data)
+        rule, _, _, err = await okta_client.replace_policy_rule(policy_id, rule_id, rule_data)
 
         if err:
             logger.error(f"Error updating policy rule: {err}")

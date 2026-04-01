@@ -24,10 +24,10 @@ from mcp.shared.exceptions import McpError
 from mcp.types import METHOD_NOT_FOUND
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # Shared Pydantic schemas for elicitation prompts
 # ---------------------------------------------------------------------------
+
 
 class DeleteConfirmation(BaseModel):
     """Schema presented to the user when a deletion is requested."""

@@ -12,7 +12,12 @@ from loguru import logger
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
-from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, has_next_page, paginate_all_results
+from okta_mcp_server.utils.pagination import (
+    build_query_params,
+    create_paginated_response,
+    has_next_page,
+    paginate_all_results,
+)
 from okta_mcp_server.utils.summarize import summarize_logs
 
 

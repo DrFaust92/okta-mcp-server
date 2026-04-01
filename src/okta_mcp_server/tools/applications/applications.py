@@ -181,7 +181,7 @@ async def update_application(ctx: Context, app_id: str, app_config: Dict[str, An
         client = await get_okta_client(manager)
 
         logger.debug(f"Calling Okta API to update application {app_id}")
-        app, _, _, err = await client.update_application(app_id, app_config)
+        app, _, _, err = await client.replace_application(app_id, app_config)
 
         if err:
             logger.error(f"Okta API error while updating application {app_id}: {err}")
@@ -196,7 +196,7 @@ async def update_application(ctx: Context, app_id: str, app_config: Dict[str, An
 
 @mcp.tool()
 @validate_ids("app_id")
-async def delete_application(ctx: Context, app_id: str):
+def delete_application(ctx: Context, app_id: str):
     """Delete an application by ID from the Okta organization.
 
     This tool deletes an application by its ID from the Okta organization, but requires confirmation.

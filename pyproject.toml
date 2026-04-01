@@ -29,4 +29,4 @@ dev = [
 packages = ["src/okta_mcp_server"]
 
 [project.scripts]
-okta-mcp-server = "okta_mcp_server:main"
+okta-mcp-server = "okta_mcp_server.server:main"

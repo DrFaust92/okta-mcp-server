@@ -12,7 +12,12 @@ from loguru import logger
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
-from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, has_next_page, paginate_all_results
+from okta_mcp_server.utils.pagination import (
+    build_query_params,
+    create_paginated_response,
+    has_next_page,
+    paginate_all_results,
+)
 from okta_mcp_server.utils.summarize import summarize_applications, summarize_group, summarize_groups, summarize_users
 from okta_mcp_server.utils.validation import validate_ids
 
@@ -160,7 +165,7 @@ async def create_group(profile: dict, ctx: Context = None):
         # Wrap the profile in a dict with 'profile' key as required by Okta SDK
         logger.debug("Calling Okta API to create group")
 
-        group, _, _, err = await client.create_group({"profile": profile})
+        group, _, _, err = await client.add_group({"profile": profile})
 
         if err:
             logger.error(f"Okta API error while creating group: {err}")
@@ -271,7 +276,7 @@ async def update_group(group_id: str, profile: dict, ctx: Context = None):
         # Wrap the profile in a dict with 'profile' key as required by Okta SDK
         logger.debug(f"Calling Okta API to update group {group_id}")
 
-        group, _, _, err = await client.update_group(group_id, {"profile": profile})
+        group, _, _, err = await client.replace_group(group_id, {"profile": profile})
 
         if err:
             logger.error(f"Okta API error while updating group {group_id}: {err}")
@@ -424,7 +429,7 @@ async def add_user_to_group(group_id: str, user_id: str, ctx: Context = None):
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to add user {user_id} to group {group_id}")
 
-        _, _, err = await client.add_user_to_group(group_id, user_id)
+        _, _, err = await client.assign_user_to_group(group_id, user_id)
 
         if err:
             logger.error(f"Okta API error while adding user {user_id} to group {group_id}: {err}")
@@ -459,7 +464,7 @@ async def remove_user_from_group(group_id: str, user_id: str, ctx: Context = Non
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to remove user {user_id} from group {group_id}")
 
-        _, _, err = await client.remove_user_from_group(group_id, user_id)
+        _, _, err = await client.unassign_user_from_group(group_id, user_id)
 
         if err:
             logger.error(f"Okta API error while removing user {user_id} from group {group_id}: {err}")

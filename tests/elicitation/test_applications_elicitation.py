@@ -30,17 +30,15 @@ APP_ID = "0oa1234567890ABCDEF"
 class TestDeleteApplication:
     """delete_application now always returns a confirmation dict (no elicitation)."""
 
-    @pytest.mark.asyncio
-    async def test_returns_confirmation_dict(self, ctx_elicit_accept_true):
-        result = await delete_application(ctx=ctx_elicit_accept_true, app_id=APP_ID)
+    def test_returns_confirmation_dict(self, ctx_elicit_accept_true):
+        result = delete_application(ctx=ctx_elicit_accept_true, app_id=APP_ID)
 
         assert result[0]["confirmation_required"] is True
         assert APP_ID in result[0]["message"]
         assert result[0]["app_id"] == APP_ID
 
-    @pytest.mark.asyncio
-    async def test_returns_confirmation_dict_without_elicitation(self, ctx_no_elicitation):
-        result = await delete_application(ctx=ctx_no_elicitation, app_id=APP_ID)
+    def test_returns_confirmation_dict_without_elicitation(self, ctx_no_elicitation):
+        result = delete_application(ctx=ctx_no_elicitation, app_id=APP_ID)
 
         assert result[0]["confirmation_required"] is True
         assert APP_ID in result[0]["message"]

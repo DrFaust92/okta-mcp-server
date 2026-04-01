@@ -28,7 +28,7 @@ class OktaAppContext:
 
 
 @asynccontextmanager
-async def okta_authorisation_flow(server: FastMCP) -> AsyncIterator[OktaAppContext]:
+async def okta_authorisation_flow(server: FastMCP) -> AsyncIterator[OktaAppContext]:  # noqa: RUF029
     """
     Manages the application lifecycle. In stdio mode, initializes OktaAuthManager
     for device/JWT flow. In HTTP mode with OAuthProxy, authentication is handled
@@ -111,8 +111,8 @@ def main():
 
     logger.info("Starting Okta MCP Server")
     from okta_mcp_server.tools.applications import applications  # noqa: F401
-    from okta_mcp_server.tools.groups import groups  # noqa: F401
     from okta_mcp_server.tools.group_rules import group_rules  # noqa: F401
+    from okta_mcp_server.tools.groups import groups  # noqa: F401
     from okta_mcp_server.tools.policies import policies  # noqa: F401
     from okta_mcp_server.tools.system_logs import system_logs  # noqa: F401
     from okta_mcp_server.tools.users import users  # noqa: F401
