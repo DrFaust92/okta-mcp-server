@@ -5,11 +5,11 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
-"""Tests for group deletion with elicitation support."""
+"""Tests for group deletion."""
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -20,97 +20,31 @@ GROUP_ID = "00g1234567890ABCDEF"
 
 
 # ---------------------------------------------------------------------------
-# delete_group — elicitation flows
+# delete_group — always returns confirmation prompt (sync function)
 # ---------------------------------------------------------------------------
 
-class TestDeleteGroupElicitation:
-    """Tests for delete_group when the client supports elicitation."""
+class TestDeleteGroup:
+    """delete_group is now a sync function that always returns a confirmation dict."""
 
-    @pytest.mark.asyncio
-    @patch("okta_mcp_server.tools.groups.groups.get_okta_client")
-    async def test_accept_confirmed_deletes_group(self, mock_get_client, ctx_elicit_accept_true, mock_okta_client):
-        mock_get_client.return_value = mock_okta_client
+    def test_returns_confirmation_dict(self):
+        result = delete_group(GROUP_ID, ctx=None)
 
-        result = await delete_group(GROUP_ID, ctx=ctx_elicit_accept_true)
+        assert result[0]["confirmation_required"] is True
+        assert GROUP_ID in result[0]["message"]
+        assert result[0]["group_id"] == GROUP_ID
 
-        mock_okta_client.delete_group.assert_awaited_once_with(GROUP_ID)
-        assert result[0]["message"] == f"Group {GROUP_ID} deleted successfully"
+    def test_returns_confirmation_dict_without_ctx(self):
+        result = delete_group(GROUP_ID)
 
-    @pytest.mark.asyncio
-    async def test_accept_not_confirmed_cancels(self, ctx_elicit_accept_false):
-        result = await delete_group(GROUP_ID, ctx=ctx_elicit_accept_false)
-
-        assert "cancelled" in result[0]["message"].lower()
-
-    @pytest.mark.asyncio
-    async def test_decline_cancels(self, ctx_elicit_decline):
-        result = await delete_group(GROUP_ID, ctx=ctx_elicit_decline)
-
-        assert "cancelled" in result[0]["message"].lower()
-
-    @pytest.mark.asyncio
-    async def test_cancel_cancels(self, ctx_elicit_cancel):
-        result = await delete_group(GROUP_ID, ctx=ctx_elicit_cancel)
-
-        assert "cancelled" in result[0]["message"].lower()
-
-    @pytest.mark.asyncio
-    @patch("okta_mcp_server.tools.groups.groups.get_okta_client")
-    async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
-        client = AsyncMock()
-        client.delete_group.return_value = (None, "API Error: group not found")
-        mock_get_client.return_value = client
-
-        result = await delete_group(GROUP_ID, ctx=ctx_elicit_accept_true)
-
-        assert "error" in result[0]
-
-    @pytest.mark.asyncio
-    @patch("okta_mcp_server.tools.groups.groups.get_okta_client")
-    async def test_exception_during_delete(self, mock_get_client, ctx_elicit_accept_true):
-        mock_get_client.side_effect = Exception("Connection refused")
-
-        result = await delete_group(GROUP_ID, ctx=ctx_elicit_accept_true)
-
-        assert "error" in result[0]
+        assert result[0]["confirmation_required"] is True
 
 
 # ---------------------------------------------------------------------------
-# delete_group — fallback flows
-# ---------------------------------------------------------------------------
-
-class TestDeleteGroupFallback:
-    """Tests for delete_group when the client does NOT support elicitation.
-
-    Pre-elicitation behaviour: the tool returns a payload directing the LLM
-    to call ``confirm_delete_group`` (the legacy two-tool flow).
-    """
-
-    @pytest.mark.asyncio
-    async def test_returns_confirmation_with_confirm_tool(self, ctx_no_elicitation):
-        result = await delete_group(GROUP_ID, ctx=ctx_no_elicitation)
-
-        payload = result[0]
-        assert payload["confirmation_required"] is True
-        assert payload["tool_to_use"] == "confirm_delete_group"
-        assert GROUP_ID in payload["message"]
-        assert "confirm_delete_group" in payload["message"]
-
-    @pytest.mark.asyncio
-    async def test_exception_returns_confirmation_with_confirm_tool(self, ctx_elicit_exception):
-        result = await delete_group(GROUP_ID, ctx=ctx_elicit_exception)
-
-        payload = result[0]
-        assert payload["confirmation_required"] is True
-        assert payload["tool_to_use"] == "confirm_delete_group"
-
-
-# ---------------------------------------------------------------------------
-# confirm_delete_group — deprecated legacy flow
+# confirm_delete_group — legacy two-step flow
 # ---------------------------------------------------------------------------
 
 class TestConfirmDeleteGroupDeprecated:
-    """Tests for the deprecated confirm_delete_group tool."""
+    """Tests for the confirm_delete_group tool."""
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.groups.groups.get_okta_client")
@@ -132,6 +66,7 @@ class TestConfirmDeleteGroupDeprecated:
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.groups.groups.get_okta_client")
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
+        from unittest.mock import AsyncMock
         client = AsyncMock()
         client.delete_group.return_value = (None, "API Error")
         mock_get_client.return_value = client
