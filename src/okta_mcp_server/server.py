@@ -50,52 +50,29 @@ async def okta_authorisation_flow(server: FastMCP) -> AsyncIterator[OktaAppConte
 # --- Build the FastMCP instance based on transport mode ---
 
 if MCP_TRANSPORT == "streamable-http":
-    import httpx
-    from fastmcp.server.auth import AccessToken, OAuthProxy, TokenVerifier
-
-    class OktaIntrospectionVerifier(TokenVerifier):
-        """Validates opaque Okta tokens via the introspection endpoint."""
-
-        def __init__(self, introspect_url: str, client_id: str, client_secret: str):
-            super().__init__()
-            self._introspect_url = introspect_url
-            self._client_id = client_id
-            self._client_secret = client_secret
-
-        async def verify_token(self, token: str) -> AccessToken | None:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    self._introspect_url,
-                    data={"token": token, "token_type_hint": "access_token"},
-                    auth=(self._client_id, self._client_secret),
-                )
-                if resp.status_code != 200:
-                    return None
-                data = resp.json()
-                if not data.get("active"):
-                    return None
-                return AccessToken(
-                    token=token,
-                    client_id=data.get("client_id", self._client_id),
-                    scopes=data.get("scope", "").split(),
-                    expires_at=data.get("exp"),
-                )
+    from fastmcp.server.auth import OAuthProxy
+    from fastmcp.server.auth.providers.introspection import IntrospectionTokenVerifier
 
     _mcp_server_url = os.environ.get("MCP_SERVER_URL", "http://localhost:8000")
     _okta_org_url = os.environ.get("OKTA_ORG_URL", "").rstrip("/")
     _okta_client_id = os.environ.get("OKTA_CLIENT_ID", "")
     _okta_client_secret = os.environ.get("OKTA_CLIENT_SECRET", "")
     _okta_scopes = os.environ.get("OKTA_SCOPES", "openid profile email offline_access")
+    # Cache introspection results to avoid hitting Okta on every tool call.
+    # Tune via OKTA_TOKEN_CACHE_TTL (seconds). Default: 60s balances revocation
+    # freshness with reduced load. Set to 0 to disable caching.
+    _token_cache_ttl = int(os.environ.get("OKTA_TOKEN_CACHE_TTL", "60")) or None
 
     _auth = OAuthProxy(
         upstream_authorization_endpoint=f"{_okta_org_url}/oauth2/v1/authorize",
         upstream_token_endpoint=f"{_okta_org_url}/oauth2/v1/token",
         upstream_client_id=_okta_client_id,
         upstream_client_secret=_okta_client_secret,
-        token_verifier=OktaIntrospectionVerifier(
-            introspect_url=f"{_okta_org_url}/oauth2/v1/introspect",
+        token_verifier=IntrospectionTokenVerifier(
+            introspection_url=f"{_okta_org_url}/oauth2/v1/introspect",
             client_id=_okta_client_id,
             client_secret=_okta_client_secret,
+            cache_ttl_seconds=_token_cache_ttl,
         ),
         base_url=_mcp_server_url,
         require_authorization_consent=False,

@@ -318,16 +318,31 @@ class OktaAuthManager:
 
     async def is_valid_token(self, expiry_duration: int = 3600) -> bool:
         """Ensure that a valid token is available. Refresh or re-authenticate if needed."""
-        logger.debug(f"Checking token validity (expiry duration: {expiry_duration}s)")
+        logger.debug("Checking token validity")
 
         api_token = keyring.get_password(SERVICE_NAME, "api_token")
-        token_age = time.time() - self.token_timestamp
 
-        if api_token and token_age < expiry_duration:
-            logger.debug(f"Token is valid (age: {token_age:.0f}s)")
-            return True
+        if api_token:
+            # Prefer reading the actual exp claim from the JWT so validity survives
+            # process restarts (token_timestamp is in-memory and resets to 0).
+            try:
+                claims = jwt.decode(api_token, options={"verify_signature": False})
+                token_exp = claims.get("exp")
+                if token_exp and token_exp > time.time():
+                    logger.debug(f"Token is valid (exp in {token_exp - time.time():.0f}s)")
+                    return True
+                if token_exp:
+                    logger.info(f"Token JWT-expired {time.time() - token_exp:.0f}s ago")
+            except Exception:
+                # Non-JWT token (opaque): fall back to timestamp-based check
+                token_age = time.time() - self.token_timestamp
+                if token_age < expiry_duration:
+                    logger.debug(f"Token is valid (age: {token_age:.0f}s)")
+                    return True
+                logger.info(f"Token is expired or missing (age: {token_age:.0f}s)")
 
-        logger.info(f"Token is expired or missing (age: {token_age:.0f}s)")
+        if not api_token:
+            logger.info("No token found in keyring")
         if self.use_browserless_auth:
             # For browserless auth, we can't refresh, so re-authenticate
             logger.info("Re-authenticating using browserless flow")
