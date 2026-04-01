@@ -14,6 +14,7 @@ from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
 from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, paginate_all_results
 from okta_mcp_server.utils.summarize import summarize_group_rule, summarize_group_rules
+from okta_mcp_server.utils.validation import validate_ids
 
 
 @mcp.tool()
@@ -116,6 +117,7 @@ async def list_group_rules(
 
 
 @mcp.tool()
+@validate_ids("rule_id")
 async def get_group_rule(rule_id: str, ctx: Context = None, expand: Optional[str] = None):
     """Get a group rule by ID from the Okta organization.
 
