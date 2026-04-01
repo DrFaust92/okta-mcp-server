@@ -14,6 +14,7 @@ from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
 from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, paginate_all_results
 from okta_mcp_server.utils.summarize import summarize_applications, summarize_group, summarize_groups, summarize_users
+from okta_mcp_server.utils.validation import validate_ids
 
 
 @mcp.tool()
@@ -104,6 +105,7 @@ async def list_groups(
 
 
 @mcp.tool()
+@validate_ids("group_id")
 async def get_group(group_id: str, ctx: Context = None):
     """Get a group by ID from the Okta organization
 
@@ -174,6 +176,7 @@ async def create_group(profile: dict, ctx: Context = None):
 
 
 @mcp.tool()
+@validate_ids("group_id")
 def delete_group(group_id: str, ctx: Context = None):
     """Delete a group by ID from the Okta organization.
 
@@ -204,6 +207,7 @@ def delete_group(group_id: str, ctx: Context = None):
 
 
 @mcp.tool()
+@validate_ids("group_id")
 async def confirm_delete_group(group_id: str, confirmation: str, ctx: Context = None):
     """Confirm and execute group deletion after receiving confirmation.
 
@@ -244,6 +248,7 @@ async def confirm_delete_group(group_id: str, confirmation: str, ctx: Context = 
 
 
 @mcp.tool()
+@validate_ids("group_id")
 async def update_group(group_id: str, profile: dict, ctx: Context = None):
     """Update a group by ID in the Okta organization.
 
@@ -362,6 +367,7 @@ async def list_group_users(
 
 
 @mcp.tool()
+@validate_ids("group_id", error_return_type="dict")
 async def list_group_apps(group_id: str, ctx: Context = None):
     """List all applications in a group by ID from the Okta organization.
 
@@ -397,6 +403,7 @@ async def list_group_apps(group_id: str, ctx: Context = None):
 
 
 @mcp.tool()
+@validate_ids("group_id", "user_id")
 async def add_user_to_group(group_id: str, user_id: str, ctx: Context = None):
     """Add a user to a group by ID in the Okta organization.
 
@@ -431,6 +438,7 @@ async def add_user_to_group(group_id: str, user_id: str, ctx: Context = None):
 
 
 @mcp.tool()
+@validate_ids("group_id", "user_id")
 async def remove_user_from_group(group_id: str, user_id: str, ctx: Context = None):
     """Remove a user from a group by ID in the Okta organization.
 

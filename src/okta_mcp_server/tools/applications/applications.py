@@ -13,6 +13,7 @@ from loguru import logger
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
 from okta_mcp_server.utils.summarize import summarize_application, summarize_applications
+from okta_mcp_server.utils.validation import validate_ids
 
 
 @mcp.tool()
@@ -89,6 +90,7 @@ async def list_applications(
 
 
 @mcp.tool()
+@validate_ids("app_id", error_return_type="dict")
 async def get_application(ctx: Context, app_id: str, expand: Optional[str] = None):
     """Get an application by ID from the Okta organization.
 
@@ -160,6 +162,7 @@ async def create_application(ctx: Context, app_config: Dict[str, Any], activate:
 
 
 @mcp.tool()
+@validate_ids("app_id", error_return_type="dict")
 async def update_application(ctx: Context, app_id: str, app_config: Dict[str, Any]):
     """Update an application by ID in the Okta organization.
 
@@ -192,6 +195,7 @@ async def update_application(ctx: Context, app_id: str, app_config: Dict[str, An
 
 
 @mcp.tool()
+@validate_ids("app_id")
 async def delete_application(ctx: Context, app_id: str):
     """Delete an application by ID from the Okta organization.
 
@@ -218,6 +222,7 @@ async def delete_application(ctx: Context, app_id: str):
 
 
 @mcp.tool()
+@validate_ids("app_id")
 async def confirm_delete_application(ctx: Context, app_id: str, confirmation: str):
     """Confirm and execute application deletion after receiving confirmation.
 
@@ -257,6 +262,7 @@ async def confirm_delete_application(ctx: Context, app_id: str, confirmation: st
 
 
 @mcp.tool()
+@validate_ids("app_id")
 async def activate_application(ctx: Context, app_id: str):
     """Activate an application in the Okta organization.
 
@@ -288,6 +294,7 @@ async def activate_application(ctx: Context, app_id: str):
 
 
 @mcp.tool()
+@validate_ids("app_id")
 async def deactivate_application(ctx: Context, app_id: str):
     """Deactivate an application in the Okta organization.
 

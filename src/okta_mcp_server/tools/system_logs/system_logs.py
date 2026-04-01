@@ -31,7 +31,7 @@ async def get_logs(
 
     This tool retrieves system logs from the Okta organization.
 
-    Parameters:ye
+    Parameters:
         fetch_all (bool, optional): If True, automatically fetch all pages of results. Default: False.
         after (str, optional): Pagination cursor for fetching results after this point.
         limit (int, optional): Maximum number of log entries to return per page (min 20, max 100).
