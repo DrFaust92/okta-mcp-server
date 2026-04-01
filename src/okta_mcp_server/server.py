@@ -13,6 +13,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
+from typing import Literal, cast
+
 from fastmcp import FastMCP
 from loguru import logger
 
@@ -118,6 +120,6 @@ def main():
     from okta_mcp_server.tools.users import users  # noqa: F401
 
     if MCP_TRANSPORT == "streamable-http":
-        mcp.run(transport=MCP_TRANSPORT, host="0.0.0.0", port=8000)
+        mcp.run(transport=cast(Literal["streamable-http"], MCP_TRANSPORT), host="0.0.0.0", port=8000)
     else:
-        mcp.run(transport=MCP_TRANSPORT)
+        mcp.run(transport=cast(Literal["stdio", "sse", "streamable-http"], MCP_TRANSPORT))

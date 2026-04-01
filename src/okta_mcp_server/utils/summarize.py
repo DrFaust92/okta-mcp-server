@@ -28,6 +28,8 @@ def _obj_to_dict(obj: Any) -> Dict[str, Any]:
     """
     if isinstance(obj, dict):
         return obj
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
     if hasattr(obj, "as_dict"):
         return obj.as_dict()
     if hasattr(obj, "__dict__"):
@@ -236,13 +238,13 @@ _GROUP_RULE_FIELDS = [
 ]
 
 
-def summarize_group_rule(rule: Dict[str, Any]) -> Dict[str, Any]:
+def summarize_group_rule(rule: Any) -> Dict[str, Any]:
     """Return a compact summary of a GroupRule dict."""
     if not isinstance(rule, dict):
         rule = _obj_to_dict(rule)
     return _pick(rule, _GROUP_RULE_FIELDS)
 
 
-def summarize_group_rules(rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def summarize_group_rules(rules: List[Any]) -> List[Dict[str, Any]]:
     """Summarize a list of GroupRule dicts."""
     return [summarize_group_rule(r) for r in rules]

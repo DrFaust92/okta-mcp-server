@@ -11,7 +11,7 @@ from fastmcp import Context
 from loguru import logger
 
 from okta_mcp_server.server import mcp
-from okta_mcp_server.utils.client import get_okta_client
+from okta_mcp_server.utils.client import _resolve_manager, get_okta_client
 from okta_mcp_server.utils.pagination import (
     build_query_params,
     create_paginated_response,
@@ -85,7 +85,7 @@ async def list_group_rules(
         effective_search = f"{search} and {status_expr}" if search else status_expr
         logger.debug(f"Translated status='{status}' to search expression: '{effective_search}'")
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)
@@ -123,7 +123,7 @@ async def list_group_rules(
 
 @mcp.tool()
 @validate_ids("rule_id")
-async def get_group_rule(rule_id: str, ctx: Context = None, expand: Optional[str] = None):
+async def get_group_rule(rule_id: str, ctx: Context | None = None, expand: Optional[str] = None):
     """Get a group rule by ID from the Okta organization.
 
     This tool retrieves a group rule by its ID from the Okta organization.
@@ -138,14 +138,14 @@ async def get_group_rule(rule_id: str, ctx: Context = None, expand: Optional[str
     """
     logger.info(f"Getting group rule with ID: {rule_id}")
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to get group rule {rule_id}")
 
         query_params = build_query_params(expand=expand) if expand else {}
-        rule, _, _, err = await client.get_group_rule(rule_id, **query_params)
+        rule, _, err = await client.get_group_rule(rule_id, **query_params)
 
         if err:
             logger.error(f"Okta API error while getting group rule {rule_id}: {err}")

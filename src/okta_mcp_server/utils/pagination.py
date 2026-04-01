@@ -67,7 +67,7 @@ async def paginate_all_results(
     pages_fetched = 1
     response = initial_response
 
-    pagination_info = {
+    pagination_info: dict[str, Any] = {
         "pages_fetched": 1,
         "total_items": len(all_items),
         "stopped_early": False,

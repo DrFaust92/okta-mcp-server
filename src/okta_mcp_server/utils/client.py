@@ -7,6 +7,11 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastmcp import Context
+
 import os
 
 import keyring
@@ -55,3 +60,18 @@ async def get_okta_client(manager: OktaAuthManager | None) -> OktaClient:
     }
     logger.debug(f"Okta client configured for org: {org_url}")
     return OktaClient(config)
+
+
+def _resolve_manager(ctx: Context | None) -> OktaAuthManager | None:
+    """Safely extract OktaAuthManager from the MCP context.
+
+    Returns None in HTTP mode (where ctx.request_context.lifespan_context
+    has no okta_auth_manager) or when ctx itself is None.
+    """
+    if ctx is None:
+        return None
+    rc = ctx.request_context
+    if rc is None:
+        return None
+    lc = rc.lifespan_context  # type: ignore[union-attr]
+    return getattr(lc, "okta_auth_manager", None)

@@ -11,7 +11,7 @@ from fastmcp import Context
 from loguru import logger
 
 from okta_mcp_server.server import mcp
-from okta_mcp_server.utils.client import get_okta_client
+from okta_mcp_server.utils.client import _resolve_manager, get_okta_client
 from okta_mcp_server.utils.pagination import (
     build_query_params,
     create_paginated_response,
@@ -80,7 +80,7 @@ async def list_users(
             logger.warning(f"Limit {limit} exceeds maximum (100), setting to 100")
             limit = 100
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)
@@ -117,7 +117,7 @@ async def list_users(
 
 
 @mcp.tool()
-async def get_user_profile_attributes(ctx: Context = None):
+async def get_user_profile_attributes(ctx: Context | None = None):
     """List all user profile attributes supported by your Okta org.
     This is helpful in case you need to check if the user profile attribute is valid.
     The prompt can contain non existent search terms, in which case we should seek clarification from the user
@@ -128,19 +128,19 @@ async def get_user_profile_attributes(ctx: Context = None):
     """
     logger.info("Fetching user profile attributes")
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)
         logger.debug("Fetching first user to extract profile attributes")
 
-        users, _, _, err = await client.list_users(limit=1)
+        users, _, err = await client.list_users(limit=1)
 
         if err:
             logger.error(f"Okta API error while fetching profile attributes: {err}")
             return {"error": f"Error: {err}"}
 
-        if len(users) > 0:
+        if users and len(users) > 0:
             attributes = vars(users[0].profile)
             logger.info(f"Successfully retrieved {len(attributes)} profile attributes")
             logger.debug(f"Profile attributes: {list(attributes.keys())}")
@@ -157,7 +157,7 @@ async def get_user_profile_attributes(ctx: Context = None):
 @validate_ids("user_id")
 async def list_user_groups(
     user_id: str,
-    ctx: Context = None,
+    ctx: Context | None = None,
 ):
     """List all groups that a user belongs to in the Okta organization.
 
@@ -171,13 +171,13 @@ async def list_user_groups(
     """
     logger.info(f"Listing groups for user: {user_id}")
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to list groups for user {user_id}")
 
-        groups, _, _, err = await client.list_user_groups(user_id)
+        groups, _, err = await client.list_user_groups(user_id)
 
         if err:
             logger.error(f"Okta API error while listing groups for user {user_id}: {err}")
@@ -196,7 +196,7 @@ async def list_user_groups(
 
 @mcp.tool()
 @validate_ids("user_id")
-async def get_user(user_id: str, ctx: Context = None):
+async def get_user(user_id: str, ctx: Context | None = None):
     """Get a user by ID from the Okta organization
 
     This tool retrieves a user by their ID from the Okta organization.
@@ -209,7 +209,7 @@ async def get_user(user_id: str, ctx: Context = None):
     """
     logger.info(f"Getting user with ID: {user_id}")
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)
@@ -217,7 +217,7 @@ async def get_user(user_id: str, ctx: Context = None):
 
         user = await client.get_user(user_id)
 
-        logger.info(f"Successfully retrieved user: {user.profile.email if hasattr(user, 'profile') else user_id}")
+        logger.info(f"Successfully retrieved user: {user_id}")
         return [summarize_user(user)]
     except Exception as e:
         logger.error(f"Exception while getting user {user_id}: {type(e).__name__}: {e}")
@@ -225,7 +225,7 @@ async def get_user(user_id: str, ctx: Context = None):
 
 
 @mcp.tool()
-async def create_user(profile: dict, ctx: Context = None):
+async def create_user(profile: dict, ctx: Context | None = None):
     """Create a user in the Okta organization.
 
     This tool creates a new user in the Okta organization with the provided profile.
@@ -239,7 +239,7 @@ async def create_user(profile: dict, ctx: Context = None):
     logger.info("Creating new user in Okta organization")
     logger.debug(f"User profile: email={profile.get('email', 'N/A')}, login={profile.get('login', 'N/A')}")
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)
@@ -247,14 +247,14 @@ async def create_user(profile: dict, ctx: Context = None):
         user_data = {"profile": profile}
         logger.debug("Calling Okta API to create user")
 
-        user, _, _, err = await client.create_user(user_data)
+        user, _, err = await client.create_user(user_data)
 
         if err:
             logger.error(f"Okta API error while creating user: {err}")
             return [f"Error: {err}"]
 
         logger.info(
-            f"Successfully created user: {user.id} ({user.profile.email if hasattr(user, 'profile') else 'N/A'})"
+            f"Successfully created user: {user.id if user else 'unknown'}"
         )
         return [summarize_user(user)]
     except Exception as e:
@@ -264,7 +264,7 @@ async def create_user(profile: dict, ctx: Context = None):
 
 @mcp.tool()
 @validate_ids("user_id")
-async def update_user(user_id: str, profile: dict, ctx: Context = None):
+async def update_user(user_id: str, profile: dict, ctx: Context | None = None):
     """Update a user in the Okta organization.
 
     This tool updates an existing user in the Okta organization with the provided profile.
@@ -278,14 +278,14 @@ async def update_user(user_id: str, profile: dict, ctx: Context = None):
     """
     logger.info(f"Updating user with ID: {user_id}")
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)
         user_data = {"profile": profile}
         logger.debug(f"Calling Okta API to update user {user_id}")
 
-        user, _, _, err = await client.update_user(user_id, user_data)
+        user, _, err = await client.update_user(user_id, user_data)
 
         if err:
             logger.error(f"Okta API error while updating user {user_id}: {err}")
@@ -300,7 +300,7 @@ async def update_user(user_id: str, profile: dict, ctx: Context = None):
 
 @mcp.tool()
 @validate_ids("user_id")
-async def deactivate_user(user_id: str, ctx: Context = None):
+async def deactivate_user(user_id: str, ctx: Context | None = None):
     """Deactivates a user from the Okta organization.
 
     This tool deactivates a user from the Okta organization by their ID.
@@ -314,7 +314,7 @@ async def deactivate_user(user_id: str, ctx: Context = None):
     """
     logger.info(f"Deactivating user with ID: {user_id}")
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)
@@ -335,7 +335,7 @@ async def deactivate_user(user_id: str, ctx: Context = None):
 
 @mcp.tool()
 @validate_ids("user_id")
-async def delete_deactivated_user(user_id: str, ctx: Context = None):
+async def delete_deactivated_user(user_id: str, ctx: Context | None = None):
     """Delete a user from the Okta organization who has already been deactivated or deprovisioned.
 
     This tool deletes a user from the Okta organization by their ID who has already been deactivated or deprovisioned.
@@ -348,7 +348,7 @@ async def delete_deactivated_user(user_id: str, ctx: Context = None):
     """
     logger.info(f"Deleting deactivated user with ID: {user_id}")
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)

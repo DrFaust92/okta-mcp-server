@@ -11,7 +11,7 @@ from fastmcp import Context
 from loguru import logger
 
 from okta_mcp_server.server import mcp
-from okta_mcp_server.utils.client import get_okta_client
+from okta_mcp_server.utils.client import _resolve_manager, get_okta_client
 from okta_mcp_server.utils.pagination import (
     build_query_params,
     create_paginated_response,
@@ -23,7 +23,7 @@ from okta_mcp_server.utils.summarize import summarize_logs
 
 @mcp.tool()
 async def get_logs(
-    ctx: Context = None,
+    ctx: Context | None = None,
     fetch_all: bool = False,
     after: Optional[str] = None,
     limit: Optional[int] = None,
@@ -73,7 +73,7 @@ async def get_logs(
             logger.warning(f"Limit {limit} exceeds maximum (100), setting to 100")
             limit = 100
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         client = await get_okta_client(manager)

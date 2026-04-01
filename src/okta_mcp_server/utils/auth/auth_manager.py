@@ -27,12 +27,12 @@ SERVICE_NAME = "OktaAuthManager"
 class OktaAuthManager:
     """Manages Okta configuration, authentication, and token state."""
 
-    org_url: str = field(init=False)
-    client_id: str = field(init=False)
+    org_url: str | None = field(init=False)
+    client_id: str | None = field(init=False)
     token_timestamp: int = 0
     scopes: str = "openid profile email offline_access"
-    private_key: str = field(init=False, default=None)
-    key_id: str = field(init=False, default=None)
+    private_key: str | None = field(init=False, default=None)
+    key_id: str | None = field(init=False, default=None)
     use_browserless_auth: bool = field(init=False, default=False)
 
     # TODO: Implement a way to set scopes dynamically by the user if needed.
@@ -89,6 +89,8 @@ class OktaAuthManager:
         try:
             # Ensure the key is in bytes format
             private_key = self.private_key
+            if private_key is None:
+                raise ValueError("Private key is not set")
             if isinstance(private_key, str):
                 private_key = private_key.encode("utf-8")
 
@@ -105,7 +107,7 @@ class OktaAuthManager:
         """Perform browserless authentication using client credentials with JWT assertion."""
         logger.info("Starting browserless authentication")
 
-        self.org_url = self.org_url.rstrip("/")
+        self.org_url = (self.org_url or "").rstrip("/")
         env_scopes = os.environ.get("OKTA_SCOPES", "").strip()
         if env_scopes:
             self.scopes = env_scopes

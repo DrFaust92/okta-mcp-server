@@ -11,9 +11,10 @@ from fastmcp import Context
 from loguru import logger
 
 from okta_mcp_server.server import mcp
-from okta_mcp_server.utils.client import get_okta_client
+from okta_mcp_server.utils.client import _resolve_manager, get_okta_client
 from okta_mcp_server.utils.pagination import extract_after_cursor
 from okta_mcp_server.utils.summarize import (
+    _obj_to_dict,
     summarize_policies,
     summarize_policy,
     summarize_policy_rule,
@@ -59,7 +60,7 @@ async def list_policies(
             logger.warning(f"Limit {limit} exceeds maximum (100), setting to 100")
             limit = 100
 
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
 
     try:
         okta_client = await get_okta_client(manager)
@@ -70,7 +71,7 @@ async def list_policies(
             params["after"] = after
 
         logger.debug("Calling Okta API to list policies")
-        policies, _, _, err = await okta_client.list_policies(**params)
+        policies, _, err = await okta_client.list_policies(**params)
 
         if err:
             logger.error(f"Error listing policies: {err}")
@@ -82,7 +83,7 @@ async def list_policies(
 
         logger.info(f"Successfully retrieved {len(policies)} policies")
         return {
-            "policies": summarize_policies([policy.as_dict() for policy in policies]),
+            "policies": summarize_policies([_obj_to_dict(policy) for policy in policies]),
         }
 
     except Exception as e:
@@ -101,17 +102,17 @@ async def get_policy(ctx: Context, policy_id: str):
     Returns:
         Dict containing the policy details.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
-        policy, _, _, err = await okta_client.get_policy(policy_id)
+        policy, _, err = await okta_client.get_policy(policy_id)
 
         if err:
             logger.error(f"Error getting policy {policy_id}: {err}")
             return {"error": str(err)}
 
-        return summarize_policy(policy.as_dict()) if policy else None
+        return summarize_policy(_obj_to_dict(policy)) if policy else None
 
     except Exception as e:
         logger.error(f"Exception getting policy: {e}")
@@ -136,17 +137,17 @@ async def create_policy(ctx: Context, policy_data: Dict[str, Any]):
     Returns:
         Dict containing the created policy details.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
-        policy, _, _, err = await okta_client.create_policy(policy_data)
+        policy, _, err = await okta_client.create_policy(policy_data)
 
         if err:
             logger.error(f"Error creating policy: {err}")
             return {"error": str(err)}
 
-        return summarize_policy(policy.as_dict()) if policy else None
+        return summarize_policy(_obj_to_dict(policy)) if policy else None
 
     except Exception as e:
         logger.error(f"Exception creating policy: {e}")
@@ -165,17 +166,17 @@ async def update_policy(ctx: Context, policy_id: str, policy_data: Dict[str, Any
     Returns:
         Dict containing the updated policy details.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
-        policy, _, _, err = await okta_client.replace_policy(policy_id, policy_data)
+        policy, _, err = await okta_client.replace_policy(policy_id, policy_data)
 
         if err:
             logger.error(f"Error updating policy {policy_id}: {err}")
             return {"error": str(err)}
 
-        return summarize_policy(policy.as_dict()) if policy else None
+        return summarize_policy(_obj_to_dict(policy)) if policy else None
 
     except Exception as e:
         logger.error(f"Exception updating policy: {e}")
@@ -193,7 +194,7 @@ async def delete_policy(ctx: Context, policy_id: str):
     Returns:
         Dict with success status.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
@@ -221,7 +222,7 @@ async def activate_policy(ctx: Context, policy_id: str):
     Returns:
         Dict with success status.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
@@ -249,7 +250,7 @@ async def deactivate_policy(ctx: Context, policy_id: str):
     Returns:
         Dict with success status.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
@@ -281,7 +282,7 @@ async def list_policy_rules(ctx: Context, policy_id: str):
             - next_page_token (Optional[str]): Token for next page
             - error (str): Error message if the operation fails
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
@@ -296,7 +297,7 @@ async def list_policy_rules(ctx: Context, policy_id: str):
             return {"rules": []}
 
         return {
-            "rules": summarize_policy_rules([rule.as_dict() for rule in rules]),
+            "rules": summarize_policy_rules([_obj_to_dict(rule) for rule in rules]),
             "has_next": extract_after_cursor(resp) is not None if resp else False,
             "next_page_token": extract_after_cursor(resp) if resp else None,
         }
@@ -318,17 +319,17 @@ async def get_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     Returns:
         Dict containing the policy rule details.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
-        rule, _, _, err = await okta_client.get_policy_rule(policy_id, rule_id)
+        rule, _, err = await okta_client.get_policy_rule(policy_id, rule_id)
 
         if err:
             logger.error(f"Error getting policy rule: {err}")
             return {"error": str(err)}
 
-        return summarize_policy_rule(rule.as_dict()) if rule else None
+        return summarize_policy_rule(_obj_to_dict(rule)) if rule else None
 
     except Exception as e:
         logger.error(f"Exception getting policy rule: {e}")
@@ -352,17 +353,17 @@ async def create_policy_rule(ctx: Context, policy_id: str, rule_data: Dict[str, 
     Returns:
         Dict containing the created rule details.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
-        rule, _, _, err = await okta_client.create_policy_rule(policy_id, rule_data)
+        rule, _, err = await okta_client.create_policy_rule(policy_id, rule_data)
 
         if err:
             logger.error(f"Error creating policy rule: {err}")
             return {"error": str(err)}
 
-        return summarize_policy_rule(rule.as_dict()) if rule else None
+        return summarize_policy_rule(_obj_to_dict(rule)) if rule else None
 
     except Exception as e:
         logger.error(f"Exception creating policy rule: {e}")
@@ -384,17 +385,17 @@ async def update_policy_rule(
     Returns:
         Dict containing the updated rule details.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
-        rule, _, _, err = await okta_client.replace_policy_rule(policy_id, rule_id, rule_data)
+        rule, _, err = await okta_client.replace_policy_rule(policy_id, rule_id, rule_data)
 
         if err:
             logger.error(f"Error updating policy rule: {err}")
             return {"error": str(err)}
 
-        return summarize_policy_rule(rule.as_dict()) if rule else None
+        return summarize_policy_rule(_obj_to_dict(rule)) if rule else None
 
     except Exception as e:
         logger.error(f"Exception updating policy rule: {e}")
@@ -413,7 +414,7 @@ async def delete_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     Returns:
         Dict with success status.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
@@ -442,7 +443,7 @@ async def activate_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     Returns:
         Dict with success status.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
@@ -471,7 +472,7 @@ async def deactivate_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     Returns:
         Dict with success status.
     """
-    manager = ctx.request_context.lifespan_context.okta_auth_manager
+    manager = _resolve_manager(ctx)
     okta_client = await get_okta_client(manager)
 
     try:
