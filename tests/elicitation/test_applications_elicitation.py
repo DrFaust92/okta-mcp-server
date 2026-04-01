@@ -73,7 +73,7 @@ class TestConfirmDeleteApplicationDeprecated:
     @patch("okta_mcp_server.tools.applications.applications.get_okta_client")
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
         client = AsyncMock()
-        client.delete_application.return_value = (None, "API Error")
+        client.delete_application.return_value = (None, None, "API Error")
         mock_get_client.return_value = client
 
         result = await confirm_delete_application(ctx=ctx_elicit_accept_true, app_id=APP_ID, confirmation="DELETE")
@@ -102,7 +102,7 @@ class TestDeactivateApplication:
     @patch("okta_mcp_server.tools.applications.applications.get_okta_client")
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
         client = AsyncMock()
-        client.deactivate_application.return_value = (None, "API Error: app not found")
+        client.deactivate_application.return_value = (None, None, "API Error: app not found")
         mock_get_client.return_value = client
 
         result = await deactivate_application(ctx=ctx_elicit_accept_true, app_id=APP_ID)

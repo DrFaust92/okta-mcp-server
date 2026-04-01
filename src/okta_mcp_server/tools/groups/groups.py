@@ -12,7 +12,7 @@ from loguru import logger
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
-from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, paginate_all_results
+from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, has_next_page, paginate_all_results
 from okta_mcp_server.utils.summarize import summarize_applications, summarize_group, summarize_groups, summarize_users
 from okta_mcp_server.utils.validation import validate_ids
 
@@ -75,7 +75,7 @@ async def list_groups(
         query_params = build_query_params(search=search, filter=filter, q=q, after=after, limit=limit)
 
         logger.debug("Calling Okta API to list groups")
-        groups, response, err = await client.list_groups(query_params)
+        groups, response, err = await client.list_groups(**query_params)
 
         if err:
             logger.error(f"Okta API error while listing groups: {err}")
@@ -85,9 +85,9 @@ async def list_groups(
             logger.info("No groups found")
             return create_paginated_response([], response, fetch_all)
 
-        if fetch_all and response and hasattr(response, "has_next") and response.has_next():
+        if fetch_all and has_next_page(response):
             logger.info(f"fetch_all=True, auto-paginating from initial {len(groups)} groups")
-            all_groups, pagination_info = await paginate_all_results(response, groups)
+            all_groups, pagination_info = await paginate_all_results(client.list_groups, query_params, groups, response)
 
             logger.info(
                 f"Successfully retrieved {len(all_groups)} groups across {pagination_info['pages_fetched']} pages"
@@ -125,7 +125,7 @@ async def get_group(group_id: str, ctx: Context = None):
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to get group {group_id}")
 
-        group, _, err = await client.get_group(group_id)
+        group, _, _, err = await client.get_group(group_id)
 
         if err:
             logger.error(f"Okta API error while getting group {group_id}: {err}")
@@ -160,7 +160,7 @@ async def create_group(profile: dict, ctx: Context = None):
         # Wrap the profile in a dict with 'profile' key as required by Okta SDK
         logger.debug("Calling Okta API to create group")
 
-        group, _, err = await client.create_group({"profile": profile})
+        group, _, _, err = await client.create_group({"profile": profile})
 
         if err:
             logger.error(f"Okta API error while creating group: {err}")
@@ -234,7 +234,7 @@ async def confirm_delete_group(group_id: str, confirmation: str, ctx: Context = 
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to delete group {group_id}")
 
-        _, err = await client.delete_group(group_id)
+        _, _, err = await client.delete_group(group_id)
 
         if err:
             logger.error(f"Okta API error while deleting group {group_id}: {err}")
@@ -271,7 +271,7 @@ async def update_group(group_id: str, profile: dict, ctx: Context = None):
         # Wrap the profile in a dict with 'profile' key as required by Okta SDK
         logger.debug(f"Calling Okta API to update group {group_id}")
 
-        group, _, err = await client.update_group(group_id, {"profile": profile})
+        group, _, _, err = await client.update_group(group_id, {"profile": profile})
 
         if err:
             logger.error(f"Okta API error while updating group {group_id}: {err}")
@@ -336,7 +336,7 @@ async def list_group_users(
         logger.debug(f"Calling Okta API to list users in group {group_id}")
 
         query_params = build_query_params(after=after, limit=limit)
-        users, response, err = await client.list_group_users(group_id, query_params)
+        users, response, err = await client.list_group_users(group_id, **query_params)
 
         if err:
             logger.error(f"Okta API error while listing group users for {group_id}: {err}")
@@ -346,9 +346,9 @@ async def list_group_users(
             logger.info(f"No users found in group {group_id}")
             return create_paginated_response([], response, fetch_all)
 
-        if fetch_all and response and hasattr(response, "has_next") and response.has_next():
+        if fetch_all and has_next_page(response):
             logger.info(f"fetch_all=True, auto-paginating from initial {len(users)} users in group {group_id}")
-            all_users, pagination_info = await paginate_all_results(response, users)
+            all_users, pagination_info = await paginate_all_results(client.list_group_users, {**query_params, "group_id": group_id}, users, response)
 
             pages_fetched = pagination_info["pages_fetched"]
             logger.info(
@@ -387,7 +387,7 @@ async def list_group_apps(group_id: str, ctx: Context = None):
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to list applications for group {group_id}")
 
-        apps, _, err = await client.list_assigned_applications_for_group(group_id)
+        apps, _, _, err = await client.list_assigned_applications_for_group(group_id)
 
         if err:
             logger.error(f"Okta API error while listing applications for group {group_id}: {err}")
@@ -424,7 +424,7 @@ async def add_user_to_group(group_id: str, user_id: str, ctx: Context = None):
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to add user {user_id} to group {group_id}")
 
-        _, err = await client.add_user_to_group(group_id, user_id)
+        _, _, err = await client.add_user_to_group(group_id, user_id)
 
         if err:
             logger.error(f"Okta API error while adding user {user_id} to group {group_id}: {err}")
@@ -459,7 +459,7 @@ async def remove_user_from_group(group_id: str, user_id: str, ctx: Context = Non
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to remove user {user_id} from group {group_id}")
 
-        _, err = await client.remove_user_from_group(group_id, user_id)
+        _, _, err = await client.remove_user_from_group(group_id, user_id)
 
         if err:
             logger.error(f"Okta API error while removing user {user_id} from group {group_id}: {err}")

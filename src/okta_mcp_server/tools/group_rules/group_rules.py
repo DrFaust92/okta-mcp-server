@@ -12,7 +12,7 @@ from loguru import logger
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
-from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, paginate_all_results
+from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, has_next_page, paginate_all_results
 from okta_mcp_server.utils.summarize import summarize_group_rule, summarize_group_rules
 from okta_mcp_server.utils.validation import validate_ids
 
@@ -87,7 +87,7 @@ async def list_group_rules(
         query_params = build_query_params(search=effective_search, after=after, limit=limit, expand=expand)
 
         logger.debug("Calling Okta API to list group rules")
-        rules, response, err = await client.list_group_rules(query_params)
+        rules, response, err = await client.list_group_rules(**query_params)
 
         if err:
             logger.error(f"Okta API error while listing group rules: {err}")
@@ -97,9 +97,9 @@ async def list_group_rules(
             logger.info("No group rules found")
             return create_paginated_response([], response, fetch_all)
 
-        if fetch_all and response and hasattr(response, "has_next") and response.has_next():
+        if fetch_all and has_next_page(response):
             logger.info(f"fetch_all=True, auto-paginating from initial {len(rules)} group rules")
-            all_rules, pagination_info = await paginate_all_results(response, rules)
+            all_rules, pagination_info = await paginate_all_results(client.list_group_rules, query_params, rules, response)
 
             logger.info(
                 f"Successfully retrieved {len(all_rules)} group rules across {pagination_info['pages_fetched']} pages"
@@ -140,7 +140,7 @@ async def get_group_rule(rule_id: str, ctx: Context = None, expand: Optional[str
         logger.debug(f"Calling Okta API to get group rule {rule_id}")
 
         query_params = build_query_params(expand=expand) if expand else {}
-        rule, _, err = await client.get_group_rule(rule_id, query_params)
+        rule, _, _, err = await client.get_group_rule(rule_id, **query_params)
 
         if err:
             logger.error(f"Okta API error while getting group rule {rule_id}: {err}")

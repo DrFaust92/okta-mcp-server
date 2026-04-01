@@ -41,7 +41,7 @@ class TestDeactivateUserElicitation:
     @patch("okta_mcp_server.tools.users.users.get_okta_client")
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
         client = AsyncMock()
-        client.deactivate_user.return_value = (None, "API Error: user not found")
+        client.deactivate_user.return_value = (None, None, "API Error: user not found")
         mock_get_client.return_value = client
 
         result = await deactivate_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
@@ -92,14 +92,14 @@ class TestDeleteDeactivatedUserElicitation:
 
         result = await delete_deactivated_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
 
-        mock_okta_client.deactivate_or_delete_user.assert_awaited_once_with(USER_ID)
+        mock_okta_client.delete_user.assert_awaited_once_with(USER_ID)
         assert "deleted successfully" in result[0]
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.users.users.get_okta_client")
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
         client = AsyncMock()
-        client.deactivate_or_delete_user.return_value = (None, "API Error: user not found")
+        client.delete_user.return_value = (None, None, "API Error: user not found")
         mock_get_client.return_value = client
 
         result = await delete_deactivated_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
@@ -124,7 +124,7 @@ class TestDeleteDeactivatedUserFallback:
 
         result = await delete_deactivated_user(user_id=USER_ID, ctx=ctx_no_elicitation)
 
-        mock_okta_client.deactivate_or_delete_user.assert_awaited_once_with(USER_ID)
+        mock_okta_client.delete_user.assert_awaited_once_with(USER_ID)
         assert "deleted successfully" in result[0]
 
     @pytest.mark.asyncio
@@ -134,5 +134,5 @@ class TestDeleteDeactivatedUserFallback:
 
         result = await delete_deactivated_user(user_id=USER_ID, ctx=ctx_elicit_exception)
 
-        mock_okta_client.deactivate_or_delete_user.assert_awaited_once_with(USER_ID)
+        mock_okta_client.delete_user.assert_awaited_once_with(USER_ID)
         assert "deleted successfully" in result[0]

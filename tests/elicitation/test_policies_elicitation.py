@@ -45,7 +45,7 @@ class TestDeletePolicyElicitation:
     @patch("okta_mcp_server.tools.policies.policies.get_okta_client")
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
         client = AsyncMock()
-        client.delete_policy.return_value = (None, "API Error: policy not found")
+        client.delete_policy.return_value = (None, None, "API Error: policy not found")
         mock_get_client.return_value = client
 
         result = await delete_policy(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID)
@@ -106,7 +106,7 @@ class TestDeletePolicyRuleElicitation:
     @patch("okta_mcp_server.tools.policies.policies.get_okta_client")
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
         client = AsyncMock()
-        client.delete_policy_rule.return_value = (None, "API Error: rule not found")
+        client.delete_policy_rule.return_value = (None, None, "API Error: rule not found")
         mock_get_client.return_value = client
 
         result = await delete_policy_rule(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID, rule_id=RULE_ID)
@@ -167,7 +167,7 @@ class TestDeactivatePolicyRuleElicitation:
     @patch("okta_mcp_server.tools.policies.policies.get_okta_client")
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
         client = AsyncMock()
-        client.deactivate_policy_rule.return_value = (None, "API Error: rule not found")
+        client.deactivate_policy_rule.return_value = (None, None, "API Error: rule not found")
         mock_get_client.return_value = client
 
         result = await deactivate_policy_rule(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID, rule_id=RULE_ID)
@@ -228,7 +228,7 @@ class TestDeactivatePolicyElicitation:
     @patch("okta_mcp_server.tools.policies.policies.get_okta_client")
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
         client = AsyncMock()
-        client.deactivate_policy.return_value = (None, "API Error: policy not found")
+        client.deactivate_policy.return_value = (None, None, "API Error: policy not found")
         mock_get_client.return_value = client
 
         result = await deactivate_policy(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID)

@@ -12,6 +12,7 @@ from loguru import logger
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
+from okta_mcp_server.utils.pagination import extract_after_cursor
 from okta_mcp_server.utils.summarize import (
     summarize_policies,
     summarize_policy,
@@ -69,7 +70,7 @@ async def list_policies(
             params["after"] = after
 
         logger.debug("Calling Okta API to list policies")
-        policies, _, err = await okta_client.list_policies(params)
+        policies, _, _, err = await okta_client.list_policies(**params)
 
         if err:
             logger.error(f"Error listing policies: {err}")
@@ -104,7 +105,7 @@ async def get_policy(ctx: Context, policy_id: str):
     okta_client = await get_okta_client(manager)
 
     try:
-        policy, _, err = await okta_client.get_policy(policy_id)
+        policy, _, _, err = await okta_client.get_policy(policy_id)
 
         if err:
             logger.error(f"Error getting policy {policy_id}: {err}")
@@ -139,7 +140,7 @@ async def create_policy(ctx: Context, policy_data: Dict[str, Any]):
     okta_client = await get_okta_client(manager)
 
     try:
-        policy, _, err = await okta_client.create_policy(policy_data)
+        policy, _, _, err = await okta_client.create_policy(policy_data)
 
         if err:
             logger.error(f"Error creating policy: {err}")
@@ -168,7 +169,7 @@ async def update_policy(ctx: Context, policy_id: str, policy_data: Dict[str, Any
     okta_client = await get_okta_client(manager)
 
     try:
-        policy, _, err = await okta_client.update_policy(policy_id, policy_data)
+        policy, _, _, err = await okta_client.update_policy(policy_id, policy_data)
 
         if err:
             logger.error(f"Error updating policy {policy_id}: {err}")
@@ -196,7 +197,7 @@ async def delete_policy(ctx: Context, policy_id: str):
     okta_client = await get_okta_client(manager)
 
     try:
-        _, err = await okta_client.delete_policy(policy_id)
+        _, _, err = await okta_client.delete_policy(policy_id)
 
         if err:
             logger.error(f"Error deleting policy {policy_id}: {err}")
@@ -224,7 +225,7 @@ async def activate_policy(ctx: Context, policy_id: str):
     okta_client = await get_okta_client(manager)
 
     try:
-        _, err = await okta_client.activate_policy(policy_id)
+        _, _, err = await okta_client.activate_policy(policy_id)
 
         if err:
             logger.error(f"Error activating policy {policy_id}: {err}")
@@ -252,7 +253,7 @@ async def deactivate_policy(ctx: Context, policy_id: str):
     okta_client = await get_okta_client(manager)
 
     try:
-        _, err = await okta_client.deactivate_policy(policy_id)
+        _, _, err = await okta_client.deactivate_policy(policy_id)
 
         if err:
             logger.error(f"Error deactivating policy {policy_id}: {err}")
@@ -296,8 +297,8 @@ async def list_policy_rules(ctx: Context, policy_id: str):
 
         return {
             "rules": summarize_policy_rules([rule.as_dict() for rule in rules]),
-            "has_next": resp.has_next() if resp else False,
-            "next_page_token": resp.get_next_page_token() if resp and resp.has_next() else None,
+            "has_next": extract_after_cursor(resp) is not None if resp else False,
+            "next_page_token": extract_after_cursor(resp) if resp else None,
         }
 
     except Exception as e:
@@ -321,7 +322,7 @@ async def get_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     okta_client = await get_okta_client(manager)
 
     try:
-        rule, _, err = await okta_client.get_policy_rule(policy_id, rule_id)
+        rule, _, _, err = await okta_client.get_policy_rule(policy_id, rule_id)
 
         if err:
             logger.error(f"Error getting policy rule: {err}")
@@ -355,7 +356,7 @@ async def create_policy_rule(ctx: Context, policy_id: str, rule_data: Dict[str, 
     okta_client = await get_okta_client(manager)
 
     try:
-        rule, _, err = await okta_client.create_policy_rule(policy_id, rule_data)
+        rule, _, _, err = await okta_client.create_policy_rule(policy_id, rule_data)
 
         if err:
             logger.error(f"Error creating policy rule: {err}")
@@ -387,7 +388,7 @@ async def update_policy_rule(
     okta_client = await get_okta_client(manager)
 
     try:
-        rule, _, err = await okta_client.update_policy_rule(policy_id, rule_id, rule_data)
+        rule, _, _, err = await okta_client.update_policy_rule(policy_id, rule_id, rule_data)
 
         if err:
             logger.error(f"Error updating policy rule: {err}")
@@ -416,7 +417,7 @@ async def delete_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     okta_client = await get_okta_client(manager)
 
     try:
-        _, err = await okta_client.delete_policy_rule(policy_id, rule_id)
+        _, _, err = await okta_client.delete_policy_rule(policy_id, rule_id)
 
         if err:
             logger.error(f"Error deleting policy rule: {err}")
@@ -445,7 +446,7 @@ async def activate_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     okta_client = await get_okta_client(manager)
 
     try:
-        _, err = await okta_client.activate_policy_rule(policy_id, rule_id)
+        _, _, err = await okta_client.activate_policy_rule(policy_id, rule_id)
 
         if err:
             logger.error(f"Error activating policy rule: {err}")
@@ -474,7 +475,7 @@ async def deactivate_policy_rule(ctx: Context, policy_id: str, rule_id: str):
     okta_client = await get_okta_client(manager)
 
     try:
-        _, err = await okta_client.deactivate_policy_rule(policy_id, rule_id)
+        _, _, err = await okta_client.deactivate_policy_rule(policy_id, rule_id)
 
         if err:
             logger.error(f"Error deactivating policy rule: {err}")

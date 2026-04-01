@@ -68,7 +68,7 @@ class TestConfirmDeleteGroupDeprecated:
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
         from unittest.mock import AsyncMock
         client = AsyncMock()
-        client.delete_group.return_value = (None, "API Error")
+        client.delete_group.return_value = (None, None, "API Error")
         mock_get_client.return_value = client
 
         result = await confirm_delete_group(GROUP_ID, "DELETE", ctx=ctx_elicit_accept_true)

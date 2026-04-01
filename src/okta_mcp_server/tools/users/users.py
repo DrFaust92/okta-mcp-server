@@ -12,7 +12,7 @@ from loguru import logger
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import get_okta_client
-from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, paginate_all_results
+from okta_mcp_server.utils.pagination import build_query_params, create_paginated_response, has_next_page, paginate_all_results
 from okta_mcp_server.utils.summarize import summarize_groups, summarize_user, summarize_users
 from okta_mcp_server.utils.validation import validate_ids
 
@@ -82,7 +82,7 @@ async def list_users(
         query_params = build_query_params(search=search, filter=filter, q=q, after=after, limit=limit)
 
         logger.debug("Calling Okta API to list users")
-        users, response, err = await client.list_users(query_params)
+        users, response, err = await client.list_users(**query_params)
 
         if err:
             logger.error(f"Okta API error while listing users: {err}")
@@ -92,9 +92,9 @@ async def list_users(
             logger.info("No users found")
             return create_paginated_response([], response, fetch_all_used=fetch_all)
 
-        if fetch_all and response and hasattr(response, "has_next") and response.has_next():
+        if fetch_all and has_next_page(response):
             logger.info(f"fetch_all=True, auto-paginating from initial {len(users)} users")
-            all_users, pagination_info = await paginate_all_results(response, users)
+            all_users, pagination_info = await paginate_all_results(client.list_users, query_params, users, response)
 
             logger.info(
                 f"Successfully retrieved {len(all_users)} users across {pagination_info['pages_fetched']} pages"
@@ -129,7 +129,7 @@ async def get_user_profile_attributes(ctx: Context = None):
         client = await get_okta_client(manager)
         logger.debug("Fetching first user to extract profile attributes")
 
-        users, _, err = await client.list_users({"limit": 1})
+        users, _, _, err = await client.list_users(limit=1)
 
         if err:
             logger.error(f"Okta API error while fetching profile attributes: {err}")
@@ -172,7 +172,7 @@ async def list_user_groups(
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to list groups for user {user_id}")
 
-        groups, _, err = await client.list_user_groups(user_id)
+        groups, _, _, err = await client.list_user_groups(user_id)
 
         if err:
             logger.error(f"Okta API error while listing groups for user {user_id}: {err}")
@@ -242,7 +242,7 @@ async def create_user(profile: dict, ctx: Context = None):
         user_data = {"profile": profile}
         logger.debug("Calling Okta API to create user")
 
-        user, _, err = await client.create_user(user_data)
+        user, _, _, err = await client.create_user(user_data)
 
         if err:
             logger.error(f"Okta API error while creating user: {err}")
@@ -280,7 +280,7 @@ async def update_user(user_id: str, profile: dict, ctx: Context = None):
         user_data = {"profile": profile}
         logger.debug(f"Calling Okta API to update user {user_id}")
 
-        user, _, err = await client.update_user(user_id, user_data)
+        user, _, _, err = await client.update_user(user_id, user_data)
 
         if err:
             logger.error(f"Okta API error while updating user {user_id}: {err}")
@@ -315,7 +315,7 @@ async def deactivate_user(user_id: str, ctx: Context = None):
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to deactivate user {user_id}")
 
-        _, err = await client.deactivate_user(user_id)
+        _, _, err = await client.deactivate_user(user_id)
 
         if err:
             logger.error(f"Okta API error while deactivating user {user_id}: {err}")
@@ -349,7 +349,7 @@ async def delete_deactivated_user(user_id: str, ctx: Context = None):
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to delete user {user_id}")
 
-        _, err = await client.deactivate_or_delete_user(user_id)
+        _, _, err = await client.delete_user(user_id)
 
         if err:
             logger.error(f"Okta API error while deleting user {user_id}: {err}")
