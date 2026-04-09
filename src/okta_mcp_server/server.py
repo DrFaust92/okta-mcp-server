@@ -120,6 +120,11 @@ if MCP_TRANSPORT == "streamable-http":
         extra_authorize_params={"scope": _okta_scopes},
         jwt_signing_key=_jwt_signing_key,
     )
+    # Fix CIMD clients (e.g. Claude Code): OAuthProxy initializes _default_scope_str
+    # from token_verifier.required_scopes which is None here, leaving CIMD clients
+    # registered with no scopes → invalid_scope on authorize.
+    if _auth._cimd_manager is not None:
+        _auth._cimd_manager.default_scope = _okta_scopes
 
     mcp = FastMCP(
         "Okta IDaaS MCP Server",
