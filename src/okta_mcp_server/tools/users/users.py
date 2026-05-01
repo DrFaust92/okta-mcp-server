@@ -215,7 +215,15 @@ async def get_user(user_id: str, ctx: Context | None = None):
         client = await get_okta_client(manager)
         logger.debug(f"Calling Okta API to get user {user_id}")
 
-        user = await client.get_user(user_id)
+        user, _, err = await client.get_user(user_id)
+
+        if err:
+            logger.error(f"Okta API error while getting user {user_id}: {err}")
+            return [f"Error: {err}"]
+
+        if user is None:
+            logger.info(f"User not found: {user_id}")
+            return []
 
         logger.info(f"Successfully retrieved user: {user_id}")
         return [summarize_user(user)]
