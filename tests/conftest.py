@@ -10,27 +10,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from mcp.server.elicitation import AcceptedElicitation, CancelledElicitation, DeclinedElicitation
 from mcp.shared.exceptions import McpError
-from mcp.types import ErrorData, METHOD_NOT_FOUND
-
-from okta_mcp_server.utils.elicitation import (
-    DeleteConfirmation,
-    DeactivateConfirmation,
-)
-
+from mcp.types import METHOD_NOT_FOUND, ErrorData
 
 # ---------------------------------------------------------------------------
 # Fake Okta auth / lifespan context
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FakeOktaAuthManager:
     """Minimal stand-in for OktaAuthManager."""
+
     org_url: str = "https://test.okta.com"
 
     async def is_valid_token(self):
@@ -46,12 +41,14 @@ class FakeOktaAuthManager:
 @dataclass
 class FakeLifespanContext:
     """Minimal stand-in for the lifespan context yielded by the server."""
+
     okta_auth_manager: FakeOktaAuthManager
 
 
 # ---------------------------------------------------------------------------
 # Elicitation result helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_accepted_result(confirm: bool):
     """Return an ``AcceptedElicitation`` with a ``confirm`` field."""
@@ -71,6 +68,7 @@ def _make_cancelled_result():
 # ---------------------------------------------------------------------------
 # Context fixtures
 # ---------------------------------------------------------------------------
+
 
 def _build_ctx(*, elicitation_supported: bool = True, elicit_return=None, elicit_side_effect=None):
     """Build a fake ``Context`` suitable for tool tests.
@@ -183,6 +181,7 @@ def ctx_elicit_mcp_error_other():
 # ---------------------------------------------------------------------------
 # Okta client mock helper
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def mock_okta_client():

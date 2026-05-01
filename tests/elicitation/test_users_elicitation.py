@@ -18,13 +18,13 @@ from okta_mcp_server.tools.users.users import (
     delete_deactivated_user,
 )
 
-
 USER_ID = "00u1234567890ABCDEF"
 
 
 # ===================================================================
 # deactivate_user — calls Okta directly
 # ===================================================================
+
 
 class TestDeactivateUserElicitation:
     @pytest.mark.asyncio
@@ -71,7 +71,9 @@ class TestDeactivateUserFallback:
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.users.users.get_okta_client")
-    async def test_exception_fallback_proceeds_with_deactivation(self, mock_get_client, ctx_elicit_exception, mock_okta_client):
+    async def test_exception_fallback_proceeds_with_deactivation(
+        self, mock_get_client, ctx_elicit_exception, mock_okta_client
+    ):
         mock_get_client.return_value = mock_okta_client
 
         result = await deactivate_user(user_id=USER_ID, ctx=ctx_elicit_exception)
@@ -83,6 +85,7 @@ class TestDeactivateUserFallback:
 # ===================================================================
 # delete_deactivated_user — calls Okta directly
 # ===================================================================
+
 
 class TestDeleteDeactivatedUserElicitation:
     @pytest.mark.asyncio
@@ -129,7 +132,9 @@ class TestDeleteDeactivatedUserFallback:
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.users.users.get_okta_client")
-    async def test_exception_fallback_proceeds_with_deletion(self, mock_get_client, ctx_elicit_exception, mock_okta_client):
+    async def test_exception_fallback_proceeds_with_deletion(
+        self, mock_get_client, ctx_elicit_exception, mock_okta_client
+    ):
         mock_get_client.return_value = mock_okta_client
 
         result = await delete_deactivated_user(user_id=USER_ID, ctx=ctx_elicit_exception)

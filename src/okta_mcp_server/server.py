@@ -12,7 +12,6 @@ import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-
 from typing import Literal, cast
 
 from fastmcp import FastMCP
@@ -30,7 +29,7 @@ class OktaAppContext:
 
 
 @asynccontextmanager
-async def okta_authorisation_flow(server: FastMCP) -> AsyncIterator[OktaAppContext]:  # noqa: RUF029
+async def okta_authorisation_flow(server: FastMCP) -> AsyncIterator[OktaAppContext]:
     """
     Manages the application lifecycle. In stdio mode, initializes OktaAuthManager
     for device/JWT flow. In HTTP mode with OAuthProxy, authentication is handled
