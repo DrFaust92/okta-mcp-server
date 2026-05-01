@@ -63,6 +63,12 @@ if MCP_TRANSPORT == "streamable-http":
     # Tune via OKTA_TOKEN_CACHE_TTL (seconds). Default: 60s balances revocation
     # freshness with reduced load. Set to 0 to disable caching.
     _token_cache_ttl = int(os.environ.get("OKTA_TOKEN_CACHE_TTL", "60")) or None
+    # Authorization consent screen guards against confused-deputy attacks where
+    # a third-party site triggers the OAuth flow on behalf of a logged-in user.
+    # Default ON (matches FastMCP). Set REQUIRE_AUTHORIZATION_CONSENT=false only
+    # for local development.
+    _require_consent_raw = os.environ.get("REQUIRE_AUTHORIZATION_CONSENT", "true").lower()
+    _require_consent: bool | str = "external" if _require_consent_raw == "external" else _require_consent_raw == "true"
 
     _auth = OAuthProxy(
         upstream_authorization_endpoint=f"{_okta_org_url}/oauth2/v1/authorize",
@@ -76,7 +82,7 @@ if MCP_TRANSPORT == "streamable-http":
             cache_ttl_seconds=_token_cache_ttl,
         ),
         base_url=_mcp_server_url,
-        require_authorization_consent=False,
+        require_authorization_consent=_require_consent,
         extra_authorize_params={"scope": _okta_scopes},
     )
 
