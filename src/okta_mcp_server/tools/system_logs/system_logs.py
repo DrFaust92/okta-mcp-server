@@ -21,24 +21,36 @@ from okta_mcp_server.utils.pagination import (
 )
 from okta_mcp_server.utils.summarize import summarize_logs
 
-# Workaround for SDK v3 bug: when Behavior Detection is enabled the Okta API
-# returns userBehaviors as List[dict], but LogSecurityContext declares it as
-# List[StrictStr], causing a ValidationError that crashes every get_logs call
-# on sign-on / DENY events. Relax the annotation to Optional[List[Any]] and
-# rebuild the Pydantic schema.
+# Workarounds for SDK v3 schema bugs that crash get_logs on real Okta data.
+# Each monkey-patch relaxes an overly-strict Pydantic constraint that doesn't
+# match what the API actually returns; remove these as the upstream SDK ships
+# matching schema fixes.
 try:
     import typing as _typing
 
+    from okta.models.log_outcome import LogOutcome as _LogOutcome
     from okta.models.log_security_context import LogSecurityContext as _LogSecurityContext
 
-    _patched_type = _typing.Optional[_typing.List[_typing.Any]]
-    _LogSecurityContext.__annotations__["user_behaviors"] = _patched_type
+    # 1. LogSecurityContext.user_behaviors: declared List[StrictStr] but Behavior
+    #    Detection events return List[dict].
+    _user_behaviors_type = _typing.Optional[_typing.List[_typing.Any]]
+    _LogSecurityContext.__annotations__["user_behaviors"] = _user_behaviors_type
     if "user_behaviors" in _LogSecurityContext.model_fields:
-        _LogSecurityContext.model_fields["user_behaviors"].annotation = _patched_type
+        _LogSecurityContext.model_fields["user_behaviors"].annotation = _user_behaviors_type
     _LogSecurityContext.model_rebuild(force=True)
-    logger.debug("Applied userBehaviors type workaround for LogSecurityContext (SDK v3 bug)")
+
+    # 2. LogOutcome.reason: declared with MaxLen(255) but real values like
+    #    "Password requirements were not met..." routinely exceed that.
+    _reason_type = _typing.Optional[str]
+    _LogOutcome.__annotations__["reason"] = _reason_type
+    if "reason" in _LogOutcome.model_fields:
+        _LogOutcome.model_fields["reason"].annotation = _reason_type
+        _LogOutcome.model_fields["reason"].metadata = []
+    _LogOutcome.model_rebuild(force=True)
+
+    logger.debug("Applied SDK v3 schema workarounds: LogSecurityContext.user_behaviors, LogOutcome.reason")
 except Exception as _patch_err:  # pragma: no cover - defensive
-    logger.warning(f"Could not apply userBehaviors workaround: {_patch_err}")
+    logger.warning(f"Could not apply SDK v3 schema workarounds: {_patch_err}")
 
 _VALID_OUTCOME_RESULTS = {"SUCCESS", "FAILURE", "DENY", "ALLOW", "CHALLENGE", "UNKNOWN"}
 _MFA_EVENT_TYPE_PATTERN = re.compile(
