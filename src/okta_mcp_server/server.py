@@ -133,9 +133,47 @@ else:
     )
 
 
+# --- Health endpoint (HTTP transport only) ---------------------------------
+# Exposed at both `/` and `/health`. Returns JSON suitable for K8s liveness /
+# readiness probes and for the existing blackbox-exporter Probe CR — pick
+# either path. Always public, never authenticated.
+
+if MCP_TRANSPORT == "streamable-http":
+    from importlib import metadata as _metadata
+
+    from starlette.requests import Request as _Request
+    from starlette.responses import JSONResponse as _JSONResponse
+
+    try:
+        _PACKAGE_VERSION = _metadata.version("okta-mcp-server")
+    except _metadata.PackageNotFoundError:
+        _PACKAGE_VERSION = "dev"
+
+    @mcp.custom_route("/", methods=["GET"])
+    @mcp.custom_route("/health", methods=["GET"])
+    async def _health_check(request: _Request) -> _JSONResponse:  # noqa: RUF029 - Starlette requires async handlers
+        return _JSONResponse(
+            {
+                "status": "healthy",
+                "service": "okta-mcp-server",
+                "version": _PACKAGE_VERSION,
+                "transport": MCP_TRANSPORT,
+            }
+        )
+
+
 def main():
     """Run the Okta MCP server."""
     logger.remove()
+
+    # Silence httpx / httpcore INFO-level logs. They emit full request URLs,
+    # which include OAuth bearer tokens in query strings (e.g.
+    # `?access_token=...`) for some Okta endpoints — leaving them at INFO
+    # leaks credentials into stdout / log aggregators.
+    import logging as _stdlib_logging
+
+    _stdlib_logging.getLogger("httpx").setLevel(_stdlib_logging.WARNING)
+    _stdlib_logging.getLogger("httpcore").setLevel(_stdlib_logging.WARNING)
 
     if LOG_FILE:
         logger.add(
