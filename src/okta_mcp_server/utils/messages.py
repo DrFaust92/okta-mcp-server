@@ -18,19 +18,13 @@ swap this module for a locale-aware loader without touching tool code.
 # Groups
 # ---------------------------------------------------------------------------
 
-DELETE_GROUP = (
-    "Are you sure you want to delete group {group_id}? "
-    "This action cannot be undone."
-)
+DELETE_GROUP = "Are you sure you want to delete group {group_id}? This action cannot be undone."
 
 # ---------------------------------------------------------------------------
 # Applications
 # ---------------------------------------------------------------------------
 
-DELETE_APPLICATION = (
-    "Are you sure you want to delete application {app_id}? "
-    "This action cannot be undone."
-)
+DELETE_APPLICATION = "Are you sure you want to delete application {app_id}? This action cannot be undone."
 
 DEACTIVATE_APPLICATION = (
     "Are you sure you want to deactivate application {app_id}? "
@@ -41,35 +35,20 @@ DEACTIVATE_APPLICATION = (
 # Users
 # ---------------------------------------------------------------------------
 
-DEACTIVATE_USER = (
-    "Are you sure you want to deactivate user {user_id}? "
-    "The user will lose access to all applications."
-)
+DEACTIVATE_USER = "Are you sure you want to deactivate user {user_id}? The user will lose access to all applications."
 
-DELETE_USER = (
-    "Are you sure you want to permanently delete user {user_id}? "
-    "This action cannot be undone."
-)
+DELETE_USER = "Are you sure you want to permanently delete user {user_id}? This action cannot be undone."
 
 # ---------------------------------------------------------------------------
 # Policies
 # ---------------------------------------------------------------------------
 
-DELETE_POLICY = (
-    "Are you sure you want to delete policy {policy_id}? "
-    "This action cannot be undone."
-)
+DELETE_POLICY = "Are you sure you want to delete policy {policy_id}? This action cannot be undone."
 
-DEACTIVATE_POLICY = (
-    "Are you sure you want to deactivate policy {policy_id}?"
-)
+DEACTIVATE_POLICY = "Are you sure you want to deactivate policy {policy_id}?"
 
 DELETE_POLICY_RULE = (
-    "Are you sure you want to delete rule {rule_id} from policy {policy_id}? "
-    "This action cannot be undone."
+    "Are you sure you want to delete rule {rule_id} from policy {policy_id}? This action cannot be undone."
 )
 
-DEACTIVATE_POLICY_RULE = (
-    "Are you sure you want to deactivate rule {rule_id} "
-    "in policy {policy_id}?"
-)
+DEACTIVATE_POLICY_RULE = "Are you sure you want to deactivate rule {rule_id} in policy {policy_id}?"

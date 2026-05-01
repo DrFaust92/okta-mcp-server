@@ -9,20 +9,19 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
 from okta_mcp_server.utils.elicitation import (
     DeactivateConfirmation,
     DeleteConfirmation,
-    ElicitationOutcome,
     elicit_or_fallback,
     supports_elicitation,
 )
 
-
 # ---- Schema tests ---------------------------------------------------------
+
 
 class TestDeleteConfirmationSchema:
     def test_explicit_true(self):
@@ -49,6 +48,7 @@ class TestDeactivateConfirmationSchema:
 
 
 # ---- supports_elicitation -------------------------------------------------
+
 
 class TestSupportsElicitation:
     def test_returns_true_when_capability_present(self, ctx_elicit_accept_true):
@@ -81,45 +81,36 @@ class TestSupportsElicitation:
 
 # ---- elicit_or_fallback ---------------------------------------------------
 
+
 class TestElicitOrFallback:
     @pytest.mark.asyncio
     async def test_accept_confirmed(self, ctx_elicit_accept_true):
-        outcome = await elicit_or_fallback(
-            ctx_elicit_accept_true, "Delete?", DeleteConfirmation
-        )
+        outcome = await elicit_or_fallback(ctx_elicit_accept_true, "Delete?", DeleteConfirmation)
         assert outcome.confirmed is True
         assert outcome.used_elicitation is True
         assert outcome.fallback_response is None
 
     @pytest.mark.asyncio
     async def test_accept_not_confirmed(self, ctx_elicit_accept_false):
-        outcome = await elicit_or_fallback(
-            ctx_elicit_accept_false, "Delete?", DeleteConfirmation
-        )
+        outcome = await elicit_or_fallback(ctx_elicit_accept_false, "Delete?", DeleteConfirmation)
         assert outcome.confirmed is False
         assert outcome.used_elicitation is True
 
     @pytest.mark.asyncio
     async def test_decline(self, ctx_elicit_decline):
-        outcome = await elicit_or_fallback(
-            ctx_elicit_decline, "Delete?", DeleteConfirmation
-        )
+        outcome = await elicit_or_fallback(ctx_elicit_decline, "Delete?", DeleteConfirmation)
         assert outcome.confirmed is False
         assert outcome.used_elicitation is True
 
     @pytest.mark.asyncio
     async def test_cancel(self, ctx_elicit_cancel):
-        outcome = await elicit_or_fallback(
-            ctx_elicit_cancel, "Delete?", DeleteConfirmation
-        )
+        outcome = await elicit_or_fallback(ctx_elicit_cancel, "Delete?", DeleteConfirmation)
         assert outcome.confirmed is False
         assert outcome.used_elicitation is True
 
     @pytest.mark.asyncio
     async def test_fallback_when_not_supported(self, ctx_no_elicitation):
-        outcome = await elicit_or_fallback(
-            ctx_no_elicitation, "Delete?", DeleteConfirmation
-        )
+        outcome = await elicit_or_fallback(ctx_no_elicitation, "Delete?", DeleteConfirmation)
         assert outcome.confirmed is False
         assert outcome.used_elicitation is False
         assert outcome.fallback_response is not None
@@ -128,25 +119,19 @@ class TestElicitOrFallback:
     @pytest.mark.asyncio
     async def test_fallback_with_custom_payload(self, ctx_no_elicitation):
         custom = {"custom_key": "custom_value"}
-        outcome = await elicit_or_fallback(
-            ctx_no_elicitation, "Delete?", DeleteConfirmation, fallback_payload=custom
-        )
+        outcome = await elicit_or_fallback(ctx_no_elicitation, "Delete?", DeleteConfirmation, fallback_payload=custom)
         assert outcome.fallback_response == custom
 
     @pytest.mark.asyncio
     async def test_fallback_on_exception(self, ctx_elicit_exception):
-        outcome = await elicit_or_fallback(
-            ctx_elicit_exception, "Delete?", DeleteConfirmation
-        )
+        outcome = await elicit_or_fallback(ctx_elicit_exception, "Delete?", DeleteConfirmation)
         assert outcome.confirmed is False
         assert outcome.used_elicitation is False
         assert outcome.fallback_response is not None
 
     @pytest.mark.asyncio
     async def test_deactivate_schema(self, ctx_elicit_accept_true):
-        outcome = await elicit_or_fallback(
-            ctx_elicit_accept_true, "Deactivate?", DeactivateConfirmation
-        )
+        outcome = await elicit_or_fallback(ctx_elicit_accept_true, "Deactivate?", DeactivateConfirmation)
         assert outcome.confirmed is True
         assert outcome.used_elicitation is True
 
@@ -155,7 +140,9 @@ class TestElicitOrFallback:
     @pytest.mark.asyncio
     async def test_auto_confirm_when_not_supported(self, ctx_no_elicitation):
         outcome = await elicit_or_fallback(
-            ctx_no_elicitation, "Delete?", DeleteConfirmation,
+            ctx_no_elicitation,
+            "Delete?",
+            DeleteConfirmation,
             auto_confirm_on_fallback=True,
         )
         assert outcome.confirmed is True
@@ -165,7 +152,9 @@ class TestElicitOrFallback:
     @pytest.mark.asyncio
     async def test_auto_confirm_on_exception(self, ctx_elicit_exception):
         outcome = await elicit_or_fallback(
-            ctx_elicit_exception, "Delete?", DeleteConfirmation,
+            ctx_elicit_exception,
+            "Delete?",
+            DeleteConfirmation,
             auto_confirm_on_fallback=True,
         )
         assert outcome.confirmed is True
@@ -176,7 +165,9 @@ class TestElicitOrFallback:
     async def test_auto_confirm_false_still_returns_payload(self, ctx_no_elicitation):
         """Default auto_confirm_on_fallback=False preserves original behaviour."""
         outcome = await elicit_or_fallback(
-            ctx_no_elicitation, "Delete?", DeleteConfirmation,
+            ctx_no_elicitation,
+            "Delete?",
+            DeleteConfirmation,
             auto_confirm_on_fallback=False,
         )
         assert outcome.confirmed is False
@@ -189,9 +180,7 @@ class TestElicitOrFallback:
     @pytest.mark.asyncio
     async def test_mcp_error_method_not_found_fallback(self, ctx_elicit_mcp_error_method_not_found):
         """McpError with METHOD_NOT_FOUND falls back gracefully."""
-        outcome = await elicit_or_fallback(
-            ctx_elicit_mcp_error_method_not_found, "Delete?", DeleteConfirmation
-        )
+        outcome = await elicit_or_fallback(ctx_elicit_mcp_error_method_not_found, "Delete?", DeleteConfirmation)
         assert outcome.confirmed is False
         assert outcome.used_elicitation is False
         assert outcome.fallback_response is not None
@@ -201,7 +190,9 @@ class TestElicitOrFallback:
     async def test_mcp_error_method_not_found_auto_confirm(self, ctx_elicit_mcp_error_method_not_found):
         """McpError with METHOD_NOT_FOUND auto-confirms when configured."""
         outcome = await elicit_or_fallback(
-            ctx_elicit_mcp_error_method_not_found, "Delete?", DeleteConfirmation,
+            ctx_elicit_mcp_error_method_not_found,
+            "Delete?",
+            DeleteConfirmation,
             auto_confirm_on_fallback=True,
         )
         assert outcome.confirmed is True
@@ -211,9 +202,7 @@ class TestElicitOrFallback:
     @pytest.mark.asyncio
     async def test_mcp_error_other_code_fallback(self, ctx_elicit_mcp_error_other):
         """McpError with non-METHOD_NOT_FOUND code falls back gracefully."""
-        outcome = await elicit_or_fallback(
-            ctx_elicit_mcp_error_other, "Delete?", DeleteConfirmation
-        )
+        outcome = await elicit_or_fallback(ctx_elicit_mcp_error_other, "Delete?", DeleteConfirmation)
         assert outcome.confirmed is False
         assert outcome.used_elicitation is False
         assert outcome.fallback_response is not None
@@ -222,7 +211,9 @@ class TestElicitOrFallback:
     async def test_mcp_error_other_code_auto_confirm(self, ctx_elicit_mcp_error_other):
         """McpError with non-METHOD_NOT_FOUND code auto-confirms when configured."""
         outcome = await elicit_or_fallback(
-            ctx_elicit_mcp_error_other, "Delete?", DeleteConfirmation,
+            ctx_elicit_mcp_error_other,
+            "Delete?",
+            DeleteConfirmation,
             auto_confirm_on_fallback=True,
         )
         assert outcome.confirmed is True

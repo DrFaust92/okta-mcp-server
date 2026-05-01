@@ -51,6 +51,7 @@ class DeactivateConfirmation(BaseModel):
 # Elicitation result wrapper
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ElicitationOutcome:
     """Normalised result of an elicitation attempt.
@@ -75,6 +76,7 @@ class ElicitationOutcome:
 # Capability detection
 # ---------------------------------------------------------------------------
 
+
 def supports_elicitation(ctx: Context) -> bool:
     """Return ``True`` if the connected MCP client advertised elicitation support."""
     try:
@@ -89,6 +91,7 @@ def supports_elicitation(ctx: Context) -> bool:
 # ---------------------------------------------------------------------------
 # Elicit-or-fallback helper
 # ---------------------------------------------------------------------------
+
 
 async def elicit_or_fallback(
     ctx: Context,
@@ -140,7 +143,8 @@ async def elicit_or_fallback(
         return ElicitationOutcome(
             confirmed=False,
             used_elicitation=False,
-            fallback_response=fallback_payload or {
+            fallback_response=fallback_payload
+            or {
                 "confirmation_required": True,
                 "message": message,
             },
@@ -171,7 +175,8 @@ async def elicit_or_fallback(
         return ElicitationOutcome(
             confirmed=False,
             used_elicitation=False,
-            fallback_response=fallback_payload or {
+            fallback_response=fallback_payload
+            or {
                 "confirmation_required": True,
                 "message": message,
             },
@@ -184,7 +189,8 @@ async def elicit_or_fallback(
         return ElicitationOutcome(
             confirmed=False,
             used_elicitation=False,
-            fallback_response=fallback_payload or {
+            fallback_response=fallback_payload
+            or {
                 "confirmation_required": True,
                 "message": message,
             },

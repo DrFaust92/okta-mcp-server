@@ -100,7 +100,9 @@ async def get_logs(
 
         if fetch_all and has_next_page(response):
             logger.info(f"fetch_all=True, auto-paginating from initial {log_count} log entries")
-            all_logs, pagination_info = await paginate_all_results(client.list_log_events, query_params, logs, response)
+            all_logs, pagination_info = await paginate_all_results(
+                client.list_log_events, query_params, logs, response
+            )
 
             logger.info(
                 f"Successfully retrieved {len(all_logs)} log entries across {pagination_info['pages_fetched']} pages"

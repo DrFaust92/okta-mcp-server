@@ -93,8 +93,7 @@ def validate_okta_id(id_value: str, id_type: str = "ID") -> str:
     for pattern in FORBIDDEN_PATTERNS:
         if pattern.lower() in id_lower:
             logger.warning(
-                f"Rejected {id_type} containing forbidden pattern '{pattern}': "
-                f"{_sanitize_for_log(id_value)}"
+                f"Rejected {id_type} containing forbidden pattern '{pattern}': {_sanitize_for_log(id_value)}"
             )
             raise InvalidOktaIdError(
                 f"Invalid {id_type}: contains forbidden character or pattern '{pattern}'. "

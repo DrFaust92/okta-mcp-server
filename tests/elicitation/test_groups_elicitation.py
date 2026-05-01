@@ -13,8 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from okta_mcp_server.tools.groups.groups import delete_group, confirm_delete_group
-
+from okta_mcp_server.tools.groups.groups import confirm_delete_group, delete_group
 
 GROUP_ID = "00g1234567890ABCDEF"
 
@@ -22,6 +21,7 @@ GROUP_ID = "00g1234567890ABCDEF"
 # ---------------------------------------------------------------------------
 # delete_group — always returns confirmation prompt (sync function)
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteGroup:
     """delete_group is now a sync function that always returns a confirmation dict."""
@@ -42,6 +42,7 @@ class TestDeleteGroup:
 # ---------------------------------------------------------------------------
 # confirm_delete_group — legacy two-step flow
 # ---------------------------------------------------------------------------
+
 
 class TestConfirmDeleteGroupDeprecated:
     """Tests for the confirm_delete_group tool."""
@@ -67,6 +68,7 @@ class TestConfirmDeleteGroupDeprecated:
     @patch("okta_mcp_server.tools.groups.groups.get_okta_client")
     async def test_okta_api_error(self, mock_get_client, ctx_elicit_accept_true):
         from unittest.mock import AsyncMock
+
         client = AsyncMock()
         client.delete_group.return_value = (None, None, "API Error")
         mock_get_client.return_value = client

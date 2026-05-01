@@ -104,7 +104,9 @@ async def list_group_rules(
 
         if fetch_all and has_next_page(response):
             logger.info(f"fetch_all=True, auto-paginating from initial {len(rules)} group rules")
-            all_rules, pagination_info = await paginate_all_results(client.list_group_rules, query_params, rules, response)
+            all_rules, pagination_info = await paginate_all_results(
+                client.list_group_rules, query_params, rules, response
+            )
 
             logger.info(
                 f"Successfully retrieved {len(all_rules)} group rules across {pagination_info['pages_fetched']} pages"

@@ -253,9 +253,7 @@ async def create_user(profile: dict, ctx: Context | None = None):
             logger.error(f"Okta API error while creating user: {err}")
             return [f"Error: {err}"]
 
-        logger.info(
-            f"Successfully created user: {user.id if user else 'unknown'}"
-        )
+        logger.info(f"Successfully created user: {user.id if user else 'unknown'}")
         return [summarize_user(user)]
     except Exception as e:
         logger.error(f"Exception while creating user: {type(e).__name__}: {e}")

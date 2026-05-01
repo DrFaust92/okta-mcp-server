@@ -20,7 +20,6 @@ from okta_mcp_server.tools.policies.policies import (
     delete_policy_rule,
 )
 
-
 POLICY_ID = "00p1234567890ABCDEF"
 RULE_ID = "0pr1234567890ABCDEF"
 
@@ -28,6 +27,7 @@ RULE_ID = "0pr1234567890ABCDEF"
 # ===================================================================
 # delete_policy — calls Okta directly
 # ===================================================================
+
 
 class TestDeletePolicyElicitation:
     @pytest.mark.asyncio
@@ -77,7 +77,9 @@ class TestDeletePolicyFallback:
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.policies.policies.get_okta_client")
-    async def test_exception_fallback_proceeds_with_deletion(self, mock_get_client, ctx_elicit_exception, mock_okta_client):
+    async def test_exception_fallback_proceeds_with_deletion(
+        self, mock_get_client, ctx_elicit_exception, mock_okta_client
+    ):
         mock_get_client.return_value = mock_okta_client
 
         result = await delete_policy(ctx=ctx_elicit_exception, policy_id=POLICY_ID)
@@ -89,6 +91,7 @@ class TestDeletePolicyFallback:
 # ===================================================================
 # delete_policy_rule — calls Okta directly
 # ===================================================================
+
 
 class TestDeletePolicyRuleElicitation:
     @pytest.mark.asyncio
@@ -138,7 +141,9 @@ class TestDeletePolicyRuleFallback:
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.policies.policies.get_okta_client")
-    async def test_exception_fallback_proceeds_with_deletion(self, mock_get_client, ctx_elicit_exception, mock_okta_client):
+    async def test_exception_fallback_proceeds_with_deletion(
+        self, mock_get_client, ctx_elicit_exception, mock_okta_client
+    ):
         mock_get_client.return_value = mock_okta_client
 
         result = await delete_policy_rule(ctx=ctx_elicit_exception, policy_id=POLICY_ID, rule_id=RULE_ID)
@@ -150,6 +155,7 @@ class TestDeletePolicyRuleFallback:
 # ===================================================================
 # deactivate_policy_rule — calls Okta directly
 # ===================================================================
+
 
 class TestDeactivatePolicyRuleElicitation:
     @pytest.mark.asyncio
@@ -211,6 +217,7 @@ class TestDeactivatePolicyRuleFallback:
 # ===================================================================
 # deactivate_policy — calls Okta directly
 # ===================================================================
+
 
 class TestDeactivatePolicyElicitation:
     @pytest.mark.asyncio

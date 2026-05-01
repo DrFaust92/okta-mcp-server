@@ -92,7 +92,9 @@ async def list_groups(
 
         if fetch_all and has_next_page(response):
             logger.info(f"fetch_all=True, auto-paginating from initial {len(groups)} groups")
-            all_groups, pagination_info = await paginate_all_results(client.list_groups, query_params, groups, response)
+            all_groups, pagination_info = await paginate_all_results(
+                client.list_groups, query_params, groups, response
+            )
 
             logger.info(
                 f"Successfully retrieved {len(all_groups)} groups across {pagination_info['pages_fetched']} pages"
@@ -171,9 +173,7 @@ async def create_group(profile: dict, ctx: Context | None = None):
             logger.error(f"Okta API error while creating group: {err}")
             return {"error": f"Error: {err}"}
 
-        logger.info(
-            f"Successfully created group: {group.id if group else 'unknown'}"
-        )
+        logger.info(f"Successfully created group: {group.id if group else 'unknown'}")
         return [summarize_group(group)]
     except Exception as e:
         logger.error(f"Exception while creating group: {type(e).__name__}: {e}")
@@ -353,7 +353,9 @@ async def list_group_users(
 
         if fetch_all and has_next_page(response):
             logger.info(f"fetch_all=True, auto-paginating from initial {len(users)} users in group {group_id}")
-            all_users, pagination_info = await paginate_all_results(client.list_group_users, {**query_params, "group_id": group_id}, users, response)
+            all_users, pagination_info = await paginate_all_results(
+                client.list_group_users, {**query_params, "group_id": group_id}, users, response
+            )
 
             pages_fetched = pagination_info["pages_fetched"]
             logger.info(

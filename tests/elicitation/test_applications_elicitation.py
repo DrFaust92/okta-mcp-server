@@ -19,13 +19,13 @@ from okta_mcp_server.tools.applications.applications import (
     delete_application,
 )
 
-
 APP_ID = "0oa1234567890ABCDEF"
 
 
 # ---------------------------------------------------------------------------
 # delete_application — always returns confirmation prompt
 # ---------------------------------------------------------------------------
+
 
 class TestDeleteApplication:
     """delete_application now always returns a confirmation dict (no elicitation)."""
@@ -47,6 +47,7 @@ class TestDeleteApplication:
 # ---------------------------------------------------------------------------
 # confirm_delete_application — legacy two-step flow
 # ---------------------------------------------------------------------------
+
 
 class TestConfirmDeleteApplicationDeprecated:
     """Tests for the confirm_delete_application tool."""
@@ -82,6 +83,7 @@ class TestConfirmDeleteApplicationDeprecated:
 # ---------------------------------------------------------------------------
 # deactivate_application — calls Okta directly
 # ---------------------------------------------------------------------------
+
 
 class TestDeactivateApplication:
     """deactivate_application now calls Okta directly (no elicitation)."""
@@ -120,6 +122,7 @@ class TestDeactivateApplication:
 # ---------------------------------------------------------------------------
 # deactivate_application — fallback (same behaviour, kept for compat)
 # ---------------------------------------------------------------------------
+
 
 class TestDeactivateApplicationFallback:
     @pytest.mark.asyncio

@@ -29,6 +29,10 @@ select = ["F",      # Pyflakes
           "I",      # isort
           "RUF"]    # Ruff-specific rules
 
+# `ruff format` handles line length for code; long lines that remain are
+# license-header boilerplate and other intentionally untouched text.
+ignore = ["E501"]
+
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
 unfixable = []

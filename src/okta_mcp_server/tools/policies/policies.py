@@ -372,9 +372,7 @@ async def create_policy_rule(ctx: Context, policy_id: str, rule_data: Dict[str, 
 
 @mcp.tool()
 @validate_ids("policy_id", "rule_id", error_return_type="dict")
-async def update_policy_rule(
-    ctx: Context, policy_id: str, rule_id: str, rule_data: Dict[str, Any]
-):
+async def update_policy_rule(ctx: Context, policy_id: str, rule_id: str, rule_data: Dict[str, Any]):
     """Update an existing policy rule.
 
     Parameters:
