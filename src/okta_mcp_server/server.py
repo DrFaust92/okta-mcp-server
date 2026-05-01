@@ -12,7 +12,7 @@ import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Literal, Optional, cast
 
 from fastmcp import FastMCP
 from loguru import logger
@@ -63,6 +63,40 @@ if MCP_TRANSPORT == "streamable-http":
     # Tune via OKTA_TOKEN_CACHE_TTL (seconds). Default: 60s balances revocation
     # freshness with reduced load. Set to 0 to disable caching.
     _token_cache_ttl = int(os.environ.get("OKTA_TOKEN_CACHE_TTL", "60")) or None
+    # Deterministically derive the JWT signing key so issued tokens survive
+    # pod restarts. Without this, FastMCP generates a fresh random key at every
+    # boot and every previously-issued access/refresh token becomes
+    # unverifiable — every connected client has to re-authenticate.
+    #
+    # Source priority:
+    #   1. OKTA_JWT_SIGNING_KEY env var (operator-provided, low-entropy OK)
+    #   2. OKTA_CLIENT_SECRET env var (already required by OAuthProxy,
+    #      high-entropy by definition)
+    # Both are HKDF-stretched with the same salt FastMCP expects. The same
+    # input always produces the same key, so no operator key-management is
+    # required as long as OKTA_CLIENT_SECRET stays stable.
+    from fastmcp.server.auth.jwt_issuer import derive_jwt_key as _derive_jwt_key
+
+    _override_signing_key = os.environ.get("OKTA_JWT_SIGNING_KEY")
+    if _override_signing_key:
+        _jwt_signing_key: Optional[bytes] = _derive_jwt_key(
+            low_entropy_material=_override_signing_key,
+            salt="fastmcp-jwt-signing-key",
+        )
+        logger.info("Derived JWT signing key from OKTA_JWT_SIGNING_KEY override")
+    elif _okta_client_secret:
+        _jwt_signing_key = _derive_jwt_key(
+            high_entropy_material=_okta_client_secret,
+            salt="fastmcp-jwt-signing-key",
+        )
+        logger.info("Derived JWT signing key from OKTA_CLIENT_SECRET")
+    else:
+        _jwt_signing_key = None
+        logger.warning(
+            "Neither OKTA_JWT_SIGNING_KEY nor OKTA_CLIENT_SECRET is set; FastMCP "
+            "will generate a random signing key per boot and all issued tokens "
+            "will be invalidated on pod restart."
+        )
     # Authorization consent screen guards against confused-deputy attacks where
     # a third-party site triggers the OAuth flow on behalf of a logged-in user.
     # Default ON (matches FastMCP). Set REQUIRE_AUTHORIZATION_CONSENT=false only
@@ -84,6 +118,7 @@ if MCP_TRANSPORT == "streamable-http":
         base_url=_mcp_server_url,
         require_authorization_consent=_require_consent,
         extra_authorize_params={"scope": _okta_scopes},
+        jwt_signing_key=_jwt_signing_key,
     )
 
     mcp = FastMCP(
