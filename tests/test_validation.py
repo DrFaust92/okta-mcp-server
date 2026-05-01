@@ -126,7 +126,7 @@ class TestValidateOktaId:
     def test_non_string_id(self):
         """Test that non-string IDs are rejected."""
         with pytest.raises(InvalidOktaIdError) as exc_info:
-            validate_okta_id(12345, "user_id")
+            validate_okta_id(12345, "user_id")  # ty: ignore[invalid-argument-type]
         assert "string" in str(exc_info.value).lower()
 
     def test_id_with_spaces(self):

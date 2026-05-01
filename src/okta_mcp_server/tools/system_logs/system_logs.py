@@ -5,7 +5,8 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
-from typing import Optional
+import re
+from typing import Any, Optional
 
 from fastmcp import Context
 from loguru import logger
@@ -19,6 +20,77 @@ from okta_mcp_server.utils.pagination import (
     paginate_all_results,
 )
 from okta_mcp_server.utils.summarize import summarize_logs
+
+# Workaround for SDK v3 bug: when Behavior Detection is enabled the Okta API
+# returns userBehaviors as List[dict], but LogSecurityContext declares it as
+# List[StrictStr], causing a ValidationError that crashes every get_logs call
+# on sign-on / DENY events. Relax the annotation to Optional[List[Any]] and
+# rebuild the Pydantic schema.
+try:
+    import typing as _typing
+
+    from okta.models.log_security_context import LogSecurityContext as _LogSecurityContext
+
+    _patched_type = _typing.Optional[_typing.List[_typing.Any]]
+    _LogSecurityContext.__annotations__["user_behaviors"] = _patched_type
+    if "user_behaviors" in _LogSecurityContext.model_fields:
+        _LogSecurityContext.model_fields["user_behaviors"].annotation = _patched_type
+    _LogSecurityContext.model_rebuild(force=True)
+    logger.debug("Applied userBehaviors type workaround for LogSecurityContext (SDK v3 bug)")
+except Exception as _patch_err:  # pragma: no cover - defensive
+    logger.warning(f"Could not apply userBehaviors workaround: {_patch_err}")
+
+_VALID_OUTCOME_RESULTS = {"SUCCESS", "FAILURE", "DENY", "ALLOW", "CHALLENGE", "UNKNOWN"}
+_MFA_EVENT_TYPE_PATTERN = re.compile(
+    r'eventType\s+eq\s+["\'].*(?:mfa|factor|verify|challenge|step.?up|authentication).*["\']',
+    re.IGNORECASE,
+)
+
+
+def _check_scope_error(err_or_exc: Any) -> Optional[str]:
+    """Return a user-friendly scope-error message for 403 / insufficient_scope, else None."""
+    err_str = str(err_or_exc)
+    err_status = (
+        getattr(err_or_exc, "status", None)
+        or getattr(err_or_exc, "status_code", None)
+        or getattr(err_or_exc, "errorCode", None)
+    )
+    is_403 = (
+        err_status in (403, "403")
+        or "403" in err_str
+        or "insufficient_scope" in err_str.lower()
+        or "access_denied" in err_str.lower()
+        or "okta.logs.read" in err_str.lower()
+        or "E0000005" in err_str
+        or "E0000006" in err_str
+    )
+    if is_403:
+        return (
+            "Authorization error (HTTP 403): the OAuth client does not have the "
+            "'okta.logs.read' scope. Ensure this scope is granted to the OAuth application "
+            "and that the current session was authenticated with it. "
+            f"Okta error details: {err_or_exc}"
+        )
+    return None
+
+
+def _add_failure_deny_reminder(result: dict, filter_str: Optional[str]) -> None:
+    """Mutate result in-place: add a reminder when only FAILURE or only DENY was queried."""
+    fs = filter_str or ""
+    has_failure = bool(re.search(r'outcome\.result\s+eq\s+["\']FAILURE["\']', fs, re.IGNORECASE))
+    has_deny = bool(re.search(r'outcome\.result\s+eq\s+["\']DENY["\']', fs, re.IGNORECASE))
+    if has_failure and not has_deny:
+        result["reminder"] = (
+            "FAILURE results fetched. You MUST NOW make a second separate call: "
+            "get_logs(filter='outcome.result eq \"DENY\"', fetch_all=True, since=..., until=...) "
+            "— policy-blocked sign-ins are a separate outcome and will NOT appear in FAILURE results."
+        )
+    elif has_deny and not has_failure:
+        result["reminder"] = (
+            "DENY results fetched. You MUST NOW make a second separate call: "
+            "get_logs(filter='outcome.result eq \"FAILURE\"', fetch_all=True, since=..., until=...) "
+            "— authentication failures are a separate outcome and will NOT appear in DENY results."
+        )
 
 
 @mcp.tool()
@@ -34,23 +106,40 @@ async def get_logs(
 ):
     """Retrieve system logs from the Okta organization with pagination support.
 
-    This tool retrieves system logs from the Okta organization.
+    CRITICAL — login failure investigation:
+        FAILURE and DENY are TWO SEPARATE outcome values. A single call is NEVER sufficient
+        when investigating login failures. Always make BOTH calls:
+          1. get_logs(filter='outcome.result eq "FAILURE"', fetch_all=True, ...)
+          2. get_logs(filter='outcome.result eq "DENY"', fetch_all=True, ...)
+        FAILURE = wrong password, locked account, MFA not completed.
+        DENY    = blocked by sign-on policy (IP / device / policy violation).
+        Skipping either silently misses an entire category of failures.
+
+    CRITICAL — MFA challenges:
+        Use filter='outcome.result eq "CHALLENGE"'. Do NOT filter by eventType for
+        MFA / step-up / factor verify queries — that returns the wrong slice.
 
     Parameters:
         fetch_all (bool, optional): If True, automatically fetch all pages of results. Default: False.
+            Use fetch_all=True for any "all", "complete", "total", "how many" question.
+            Always pair with a since/until time window. Capped at 50 pages.
         after (str, optional): Pagination cursor for fetching results after this point.
         limit (int, optional): Maximum number of log entries to return per page (min 20, max 100).
         since (str, optional): Filter logs since this timestamp (ISO 8601 format).
         until (str, optional): Filter logs until this timestamp (ISO 8601 format).
-        filter (str, optional): Filter expression for log events.
+        filter (str, optional): Filter expression for log events. The only valid values for
+            outcome.result are: SUCCESS, FAILURE, DENY, ALLOW, CHALLENGE, UNKNOWN. Any other
+            value will return an error from this tool — do not filter the value yourself.
         q (str, optional): Query string to search log events.
 
     Examples:
-        For pagination:
         - First call: get_logs()
         - Next page: get_logs(after="cursor_value")
         - All pages: get_logs(fetch_all=True)
         - Time range: get_logs(since="2024-01-01T00:00:00.000Z", until="2024-01-02T00:00:00.000Z")
+        - Policy-blocked logins: get_logs(filter='outcome.result eq "DENY"', fetch_all=True)
+        - Auth failures: get_logs(filter='outcome.result eq "FAILURE"', fetch_all=True)
+        - MFA challenges: get_logs(filter='outcome.result eq "CHALLENGE"', fetch_all=True)
 
     Returns:
         Dict containing:
@@ -60,6 +149,10 @@ async def get_logs(
         - next_cursor: Cursor for the next page (if has_more is True)
         - fetch_all_used: Boolean indicating if fetch_all was used
         - pagination_info: Additional pagination metadata (when fetch_all=True)
+        - reminder: Present when only FAILURE or only DENY was queried — reminds the caller
+            to make the paired call.
+        - error: Present on validation failures (invalid outcome value, MFA-by-eventType filter,
+            scope error). Always relay the message verbatim; do not treat as "no results".
     """
     logger.info("Retrieving system logs from Okta organization")
     logger.debug(f"fetch_all: {fetch_all}, after: '{after}', limit: {limit}, since: '{since}', until: '{until}'")
@@ -73,6 +166,34 @@ async def get_logs(
             logger.warning(f"Limit {limit} exceeds maximum (100), setting to 100")
             limit = 100
 
+    # Detect MFA-related eventType filters that should use outcome.result eq "CHALLENGE".
+    if filter and _MFA_EVENT_TYPE_PATTERN.search(filter):
+        has_challenge_filter = bool(re.search(r'outcome\.result\s+eq\s+["\']CHALLENGE["\']', filter, re.IGNORECASE))
+        if not has_challenge_filter:
+            return {
+                "error": (
+                    "Incorrect filter for MFA challenge queries. Do NOT use eventType filters for "
+                    "MFA challenges. You MUST use: filter='outcome.result eq \"CHALLENGE\"' "
+                    "(optionally combined with actor.id). Retry with the correct filter."
+                )
+            }
+
+    # Validate outcome.result value if present in the filter.
+    if filter:
+        outcome_match = re.search(r'outcome\.result\s+eq\s+["\']([^"\']+)["\']', filter, re.IGNORECASE)
+        if outcome_match:
+            outcome_value = outcome_match.group(1).upper()
+            if outcome_value not in _VALID_OUTCOME_RESULTS:
+                logger.warning(f"Invalid outcome.result value in filter: '{outcome_match.group(1)}'")
+                return {
+                    "error": (
+                        f"Invalid outcome.result value: '{outcome_match.group(1)}'. "
+                        f"Valid values: {', '.join(sorted(_VALID_OUTCOME_RESULTS))}. "
+                        "Note: DENY is for policy-blocked logins, FAILURE is for authentication "
+                        "failures (wrong password, locked account). For MFA challenges use CHALLENGE."
+                    )
+                }
+
     manager = _resolve_manager(ctx)
 
     try:
@@ -85,11 +206,16 @@ async def get_logs(
 
         if err:
             logger.error(f"Okta API error while retrieving system logs: {err}")
+            scope_msg = _check_scope_error(err)
+            if scope_msg:
+                return {"error": scope_msg}
             return {"error": f"Error: {err}"}
 
         if not logs:
             logger.info("No system logs found")
-            return create_paginated_response([], response, fetch_all)
+            result = create_paginated_response([], response, fetch_all)
+            _add_failure_deny_reminder(result, filter)
+            return result
 
         log_count = len(logs)
         logger.debug(f"Retrieved {log_count} system log entries in first page")
@@ -107,13 +233,20 @@ async def get_logs(
             logger.info(
                 f"Successfully retrieved {len(all_logs)} log entries across {pagination_info['pages_fetched']} pages"
             )
-            return create_paginated_response(
+            result = create_paginated_response(
                 summarize_logs(all_logs), response, fetch_all_used=True, pagination_info=pagination_info
             )
-        else:
-            logger.info(f"Successfully retrieved {log_count} system log entries")
-            return create_paginated_response(summarize_logs(logs), response, fetch_all_used=fetch_all)
+            _add_failure_deny_reminder(result, filter)
+            return result
+
+        logger.info(f"Successfully retrieved {log_count} system log entries")
+        result = create_paginated_response(summarize_logs(logs), response, fetch_all_used=fetch_all)
+        _add_failure_deny_reminder(result, filter)
+        return result
 
     except Exception as e:
         logger.error(f"Exception while retrieving system logs: {type(e).__name__}: {e}")
+        scope_msg = _check_scope_error(e)
+        if scope_msg:
+            return {"error": scope_msg}
         return {"error": f"Exception: {e}"}

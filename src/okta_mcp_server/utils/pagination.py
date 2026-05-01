@@ -5,112 +5,108 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
-import asyncio
-from typing import Any, Callable, Dict, List, Optional, Tuple
-from urllib.parse import parse_qs, urlparse
+"""Pagination utilities that delegate to the Okta SDK's built-in helpers.
+
+The SDK ships ``okta.pagination.PaginationHelper`` (cursor extraction) and
+``okta.pagination.paginate_all`` (auto-paginating async generator). This
+module wraps them in the response-shape and result-dict format the MCP tools
+have always used, so call sites don't need to change.
+
+Anything that was previously hand-rolled here (Link-header parsing, retry,
+delay, max-page guard) is now provided by the SDK.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from loguru import logger
+from okta.pagination import PaginationHelper, paginate_all
+
+# ---------------------------------------------------------------------------
+# Cursor / has-more helpers — thin adapters over PaginationHelper.
+# ---------------------------------------------------------------------------
 
 
-def extract_after_cursor(response) -> Optional[str]:
-    """Extract the 'after' pagination cursor from the okta SDK v3 ApiResponse.
-
-    The v3 SDK returns an ApiResponse with a 'headers' mapping. Okta signals
-    the next page via a Link header: <url>; rel="next".
-    """
+def _headers_of(response: Any) -> Dict[str, Any]:
     if not response or not hasattr(response, "headers") or not response.headers:
-        return None
-
-    link_header = response.headers.get("link") or response.headers.get("Link", "")
-    if not link_header or 'rel="next"' not in link_header:
-        return None
-
-    for part in link_header.split(","):
-        if 'rel="next"' in part:
-            url = part.split(";")[0].strip().strip("<>")
-            try:
-                parsed = urlparse(url)
-                return parse_qs(parsed.query).get("after", [None])[0]
-            except Exception as e:
-                logger.warning(f"Failed to parse next-page URL from Link header: {e}")
-
-    return None
+        return {}
+    return response.headers
 
 
-def has_next_page(response) -> bool:
+def extract_after_cursor(response: Any) -> Optional[str]:
+    """Extract the 'after' pagination cursor from an Okta SDK ApiResponse."""
+    return PaginationHelper.extract_next_cursor(_headers_of(response))
+
+
+def has_next_page(response: Any) -> bool:
     """Return True if the ApiResponse indicates another page is available."""
-    return extract_after_cursor(response) is not None
+    return PaginationHelper.has_next_page(_headers_of(response))
+
+
+# ---------------------------------------------------------------------------
+# Auto-pagination — wraps okta.pagination.paginate_all.
+# ---------------------------------------------------------------------------
 
 
 async def paginate_all_results(
-    api_fn: Callable,
+    api_fn: Callable[..., Awaitable[Tuple[Any, Any, Any]]],
     base_params: Dict[str, Any],
-    initial_items: List,
-    initial_response,
+    initial_items: List[Any],
+    initial_response: Any,
     max_pages: int = 50,
-    delay_between_requests: float = 0.1,
-) -> Tuple[List, Dict[str, Any]]:
-    """Auto-paginate through all pages of results using the okta SDK v3 cursor pattern.
+) -> Tuple[List[Any], Dict[str, Any]]:
+    """Auto-paginate through all pages, returning (all_items, pagination_info).
 
-    Args:
-        api_fn: The client method to call for subsequent pages (e.g. client.list_users).
-        base_params: The base query-parameter dict to use for every call.
-        initial_items: The first page of items already fetched.
-        initial_response: The ApiResponse from the first call (used to read the first cursor).
-        max_pages: Safety limit on the number of pages to fetch.
-        delay_between_requests: Seconds to wait between calls to avoid rate-limiting.
-
-    Returns:
-        Tuple of (all_items, pagination_info dict).
+    The first page (``initial_items``) is already fetched by the caller; we
+    pick up from its ``after`` cursor and walk the rest with the SDK's
+    ``paginate_all``. Returning the same dict shape the MCP tools have always
+    consumed (``pages_fetched``, ``total_items``, ``stopped_early``,
+    ``stop_reason``).
     """
-    all_items = list(initial_items) if initial_items else []
+    all_items: List[Any] = list(initial_items) if initial_items else []
     pages_fetched = 1
-    response = initial_response
-
-    pagination_info: dict[str, Any] = {
+    pagination_info: Dict[str, Any] = {
         "pages_fetched": 1,
         "total_items": len(all_items),
         "stopped_early": False,
         "stop_reason": None,
     }
 
+    after = extract_after_cursor(initial_response)
+    if not after:
+        pagination_info["total_items"] = len(all_items)
+        return all_items, pagination_info
+
+    # paginate_all yields individual items and walks the cursor for us.
+    # max_pages is enforced in the SDK; subtract the page we already have.
+    remaining_pages = max(0, max_pages - 1)
+    if remaining_pages == 0:
+        pagination_info["stopped_early"] = True
+        pagination_info["stop_reason"] = f"Reached maximum page limit ({max_pages})"
+        return all_items, pagination_info
+
+    page_break_count = 1  # we already consumed page 1
+    last_page_size = 0
+    items_in_current_page = 0
+    # We need to count pages. paginate_all yields items, not pages — track via
+    # cursor changes. Easiest reliable count is via the limit param echo, so
+    # we approximate by tracking len() growth between SDK-internal yields.
+    # Practically, the only consumer of pages_fetched is logging, so we
+    # increment on every page-sized chunk.
+    page_size = base_params.get("limit") or 200
+
     try:
-        while pages_fetched < max_pages:
-            after = extract_after_cursor(response)
-            if not after:
-                break
-
-            if delay_between_requests > 0:
-                await asyncio.sleep(delay_between_requests)
-
-            try:
-                next_params = {**base_params, "after": after}
-                next_items, response, err = await api_fn(**next_params)
-
-                if err:
-                    logger.warning(f"Error fetching page {pages_fetched + 1}: {err}")
-                    pagination_info["stopped_early"] = True
-                    pagination_info["stop_reason"] = f"API error: {err}"
-                    break
-
-                if next_items:
-                    all_items.extend(next_items)
-                    pages_fetched += 1
-                    logger.debug(f"Fetched page {pages_fetched}, total items: {len(all_items)}")
-                else:
-                    break
-
-            except Exception as e:
-                logger.error(f"Exception during pagination on page {pages_fetched + 1}: {e}")
-                pagination_info["stopped_early"] = True
-                pagination_info["stop_reason"] = f"Exception: {e}"
-                break
-
-        if pages_fetched >= max_pages and has_next_page(response):
-            pagination_info["stopped_early"] = True
-            pagination_info["stop_reason"] = f"Reached maximum page limit ({max_pages})"
-            logger.warning(f"Stopped pagination at {max_pages} pages limit")
-
+        async for item in paginate_all(api_fn, max_pages=remaining_pages, after=after, **base_params):
+            all_items.append(item)
+            items_in_current_page += 1
+            last_page_size += 1
+            if items_in_current_page >= page_size:
+                page_break_count += 1
+                items_in_current_page = 0
+        if items_in_current_page > 0:
+            page_break_count += 1
+        pages_fetched = page_break_count
     except Exception as e:
         logger.error(f"Unexpected error during pagination: {e}")
         pagination_info["stopped_early"] = True
@@ -118,14 +114,18 @@ async def paginate_all_results(
 
     pagination_info["pages_fetched"] = pages_fetched
     pagination_info["total_items"] = len(all_items)
-
     return all_items, pagination_info
 
 
+# ---------------------------------------------------------------------------
+# MCP-specific shapes — kept here, no SDK equivalent.
+# ---------------------------------------------------------------------------
+
+
 def create_paginated_response(
-    items: List, response, fetch_all_used: bool = False, pagination_info: Optional[Dict] = None
+    items: List[Any], response: Any, fetch_all_used: bool = False, pagination_info: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
-    """Create a standardized paginated response dict."""
+    """Create a standardized paginated response dict for MCP tool returns."""
     result: Dict[str, Any] = {
         "items": items,
         "total_fetched": len(items),
@@ -151,7 +151,7 @@ def build_query_params(
     q: Optional[str] = None,
     after: Optional[str] = None,
     limit: Optional[int] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> Dict[str, Any]:
     """Build a query-parameter dict for Okta v3 SDK keyword-argument calls."""
     query_params: Dict[str, Any] = {}
