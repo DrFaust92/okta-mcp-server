@@ -82,9 +82,7 @@ async def list_groups(
 
     try:
         client = await get_okta_client(manager)
-        query_params = build_query_params(
-            search=search, filter=filter, q=q, after=after, limit=limit, expand=expand
-        )
+        query_params = build_query_params(search=search, filter=filter, q=q, after=after, limit=limit, expand=expand)
 
         logger.debug("Calling Okta API to list groups")
         groups, response, err = await client.list_groups(**query_params)
