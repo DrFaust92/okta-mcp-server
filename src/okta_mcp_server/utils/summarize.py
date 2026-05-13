@@ -81,9 +81,20 @@ _GROUP_FIELDS = [
 
 
 def summarize_group(group: Any) -> Dict[str, Any]:
-    """Return a compact summary of a Group object."""
+    """Return a compact summary of a Group object.
+
+    When the group was fetched with ``expand=stats``, the embedded
+    ``usersCount`` is surfaced as ``users_count`` so callers can identify
+    empty groups without separately listing members.
+    """
     d = _obj_to_dict(group)
-    return _pick(d, _GROUP_FIELDS)
+    out = _pick(d, _GROUP_FIELDS)
+    embedded = d.get("embedded") or d.get("_embedded")
+    if isinstance(embedded, dict):
+        stats = embedded.get("stats")
+        if isinstance(stats, dict) and "usersCount" in stats:
+            out["users_count"] = stats["usersCount"]
+    return out
 
 
 def summarize_groups(groups: List[Any]) -> List[Dict[str, Any]]:
