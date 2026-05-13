@@ -31,6 +31,7 @@ async def list_groups(
     fetch_all: bool = False,
     after: Optional[str] = None,
     limit: Optional[int] = None,
+    expand: Optional[str] = None,
 ):
     """List all the groups from the Okta organization with pagination support.
     If search, filter, or q is specified, it will list only those groups that satisfy the condition.
@@ -42,6 +43,9 @@ async def list_groups(
         fetch_all (bool, optional): If True, automatically fetch all pages of results. Default: False.
         after (str, optional): Pagination cursor for fetching results after this point.
         limit (int, optional): Maximum number of groups to return per page (min 20, max 100).
+        expand (str, optional): Include additional metadata in the response. Supported values are
+            "stats" (adds users_count) and "app". With "stats", each group's summary includes a
+            users_count field reflecting `_embedded.stats.usersCount`.
         The search, filter, and q are performed on group profile attributes.
 
     Examples:
@@ -61,7 +65,8 @@ async def list_groups(
     """
     logger.info("Listing groups from Okta organization")
     logger.debug(
-        f"Search: '{search}', Filter: '{filter}', Q: '{q}', fetch_all: {fetch_all}, after: '{after}', limit: {limit}"
+        f"Search: '{search}', Filter: '{filter}', Q: '{q}', fetch_all: {fetch_all}, "
+        f"after: '{after}', limit: {limit}, expand: '{expand}'"
     )
 
     # Validate limit parameter range
@@ -77,7 +82,9 @@ async def list_groups(
 
     try:
         client = await get_okta_client(manager)
-        query_params = build_query_params(search=search, filter=filter, q=q, after=after, limit=limit)
+        query_params = build_query_params(
+            search=search, filter=filter, q=q, after=after, limit=limit, expand=expand
+        )
 
         logger.debug("Calling Okta API to list groups")
         groups, response, err = await client.list_groups(**query_params)
