@@ -92,8 +92,15 @@ def summarize_group(group: Any) -> Dict[str, Any]:
     embedded = d.get("embedded") or d.get("_embedded")
     if isinstance(embedded, dict):
         stats = embedded.get("stats")
-        if isinstance(stats, dict) and "usersCount" in stats:
-            out["users_count"] = stats["usersCount"]
+        if isinstance(stats, dict):
+            # The Okta SDK's GroupEmbeddedStats field is `users_count` with
+            # alias `usersCount`; whether the key is one or the other depends
+            # on whether the upstream dump used `by_alias=True`.
+            count = stats.get("usersCount")
+            if count is None:
+                count = stats.get("users_count")
+            if count is not None:
+                out["users_count"] = count
     return out
 
 
