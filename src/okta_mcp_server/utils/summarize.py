@@ -76,16 +76,34 @@ _GROUP_FIELDS = [
     "profile",
     "created",
     "lastUpdated",
+    "lastMembershipUpdated",
     "objectClass",
 ]
+
+
+def _pick_alias(d: Dict[str, Any], *keys: str) -> Any:
+    """Return the first present value across alias / snake_case key variants."""
+    for k in keys:
+        v = d.get(k)
+        if v is not None:
+            return v
+    return None
 
 
 def summarize_group(group: Any) -> Dict[str, Any]:
     """Return a compact summary of a Group object.
 
-    When the group was fetched with ``expand=stats``, the embedded
-    ``usersCount`` is surfaced as ``users_count`` so callers can identify
-    empty groups without separately listing members.
+    When the group was fetched with ``expand=stats``, the embedded counts
+    are surfaced as ``users_count``, ``apps_count``, and
+    ``has_admin_privilege`` so callers can audit groups without separately
+    listing members or apps. The SDK's underlying field names use both
+    snake_case (Python attr) and camelCase (alias) depending on whether the
+    upstream dump used ``by_alias=True``, so both variants are handled.
+
+    Note: the Okta SDK exposes the admin-privilege field as
+    ``has_admin_privlege`` (with a missing 'i' — a typo inherited from the
+    Okta API spec). It is surfaced here under the corrected key
+    ``has_admin_privilege``.
     """
     d = _obj_to_dict(group)
     out = _pick(d, _GROUP_FIELDS)
@@ -93,14 +111,15 @@ def summarize_group(group: Any) -> Dict[str, Any]:
     if isinstance(embedded, dict):
         stats = embedded.get("stats")
         if isinstance(stats, dict):
-            # The Okta SDK's GroupEmbeddedStats field is `users_count` with
-            # alias `usersCount`; whether the key is one or the other depends
-            # on whether the upstream dump used `by_alias=True`.
-            count = stats.get("usersCount")
-            if count is None:
-                count = stats.get("users_count")
-            if count is not None:
-                out["users_count"] = count
+            users_count = _pick_alias(stats, "usersCount", "users_count")
+            if users_count is not None:
+                out["users_count"] = users_count
+            apps_count = _pick_alias(stats, "appsCount", "apps_count")
+            if apps_count is not None:
+                out["apps_count"] = apps_count
+            has_admin = _pick_alias(stats, "hasAdminPrivlege", "has_admin_privlege")
+            if has_admin is not None:
+                out["has_admin_privilege"] = has_admin
     return out
 
 
