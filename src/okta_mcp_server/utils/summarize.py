@@ -117,6 +117,11 @@ def summarize_group(group: Any) -> Dict[str, Any]:
             apps_count = _pick_alias(stats, "appsCount", "apps_count")
             if apps_count is not None:
                 out["apps_count"] = apps_count
+            push_count = _pick_alias(
+                stats, "groupPushMappingsCount", "group_push_mappings_count"
+            )
+            if push_count is not None:
+                out["group_push_mappings_count"] = push_count
             has_admin = _pick_alias(stats, "hasAdminPrivlege", "has_admin_privlege")
             if has_admin is not None:
                 out["has_admin_privilege"] = has_admin
