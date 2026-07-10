@@ -19,6 +19,12 @@ from loguru import logger
 from okta.client import Client as OktaClient
 
 from okta_mcp_server.utils.auth.auth_manager import SERVICE_NAME, OktaAuthManager
+from okta_mcp_server.utils.okta_compat import apply_okta_sdk_leniency
+
+# Make the Okta SDK tolerant of live apps that omit fields its generated models
+# mark as required (e.g. SAML settings.signOn.*), which would otherwise abort the
+# whole list_applications / list_assigned_applications_for_group response.
+apply_okta_sdk_leniency()
 
 
 async def get_okta_client(manager: OktaAuthManager | None) -> OktaClient:
