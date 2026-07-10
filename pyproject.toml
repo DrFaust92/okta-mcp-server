@@ -11,6 +11,9 @@ dependencies = [
     "requests>=2.33.1",
     "keyring>=25.7.0",
     "keyrings.alt>=5.0.2",
+    "opentelemetry-sdk>=1.43.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.43.0",
+    "opentelemetry-instrumentation-aiohttp-client>=0.64b0",
 ]
 
 
