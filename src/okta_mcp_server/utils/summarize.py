@@ -29,7 +29,10 @@ def _obj_to_dict(obj: Any) -> Dict[str, Any]:
     if isinstance(obj, dict):
         return obj
     if hasattr(obj, "model_dump"):
-        return obj.model_dump()
+        # warnings=False suppresses Pydantic serializer warnings for models that
+        # were reconstructed leniently (see okta_compat) and therefore hold raw
+        # enum strings / nested dicts instead of typed sub-models.
+        return obj.model_dump(warnings=False)
     if hasattr(obj, "as_dict"):
         return obj.as_dict()
     if hasattr(obj, "__dict__"):
