@@ -12,6 +12,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastmcp.exceptions import ToolError
 
 from okta_mcp_server.tools.users.users import (
     deactivate_user,
@@ -44,18 +45,16 @@ class TestDeactivateUserElicitation:
         client.deactivate_user.return_value = (None, None, "API Error: user not found")
         mock_get_client.return_value = client
 
-        result = await deactivate_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
-
-        assert "Error" in result[0]
+        with pytest.raises(ToolError):
+            await deactivate_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.users.users.get_okta_client")
     async def test_exception_during_deactivate(self, mock_get_client, ctx_elicit_accept_true):
         mock_get_client.side_effect = Exception("Connection refused")
 
-        result = await deactivate_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
-
-        assert "Exception" in result[0]
+        with pytest.raises(ToolError):
+            await deactivate_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
 
 
 class TestDeactivateUserFallback:
@@ -105,18 +104,16 @@ class TestDeleteDeactivatedUserElicitation:
         client.delete_user.return_value = (None, None, "API Error: user not found")
         mock_get_client.return_value = client
 
-        result = await delete_deactivated_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
-
-        assert "Error" in result[0]
+        with pytest.raises(ToolError):
+            await delete_deactivated_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.users.users.get_okta_client")
     async def test_exception_during_delete(self, mock_get_client, ctx_elicit_accept_true):
         mock_get_client.side_effect = Exception("Connection refused")
 
-        result = await delete_deactivated_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
-
-        assert "Exception" in result[0]
+        with pytest.raises(ToolError):
+            await delete_deactivated_user(user_id=USER_ID, ctx=ctx_elicit_accept_true)
 
 
 class TestDeleteDeactivatedUserFallback:

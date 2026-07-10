@@ -12,6 +12,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastmcp.exceptions import ToolError
 
 from okta_mcp_server.tools.applications.applications import (
     confirm_delete_application,
@@ -75,9 +76,8 @@ class TestConfirmDeleteApplicationDeprecated:
         client.delete_application.return_value = (None, None, "API Error")
         mock_get_client.return_value = client
 
-        result = await confirm_delete_application(ctx=ctx_elicit_accept_true, app_id=APP_ID, confirmation="DELETE")
-
-        assert "Error" in result[0]
+        with pytest.raises(ToolError):
+            await confirm_delete_application(ctx=ctx_elicit_accept_true, app_id=APP_ID, confirmation="DELETE")
 
 
 # ---------------------------------------------------------------------------
@@ -105,18 +105,16 @@ class TestDeactivateApplication:
         client.deactivate_application.return_value = (None, None, "API Error: app not found")
         mock_get_client.return_value = client
 
-        result = await deactivate_application(ctx=ctx_elicit_accept_true, app_id=APP_ID)
-
-        assert "Error" in result[0]
+        with pytest.raises(ToolError):
+            await deactivate_application(ctx=ctx_elicit_accept_true, app_id=APP_ID)
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.applications.applications.get_okta_client")
     async def test_exception_during_deactivation(self, mock_get_client, ctx_elicit_accept_true):
         mock_get_client.side_effect = Exception("Connection refused")
 
-        result = await deactivate_application(ctx=ctx_elicit_accept_true, app_id=APP_ID)
-
-        assert "Exception" in result[0]
+        with pytest.raises(ToolError):
+            await deactivate_application(ctx=ctx_elicit_accept_true, app_id=APP_ID)
 
 
 # ---------------------------------------------------------------------------

@@ -9,6 +9,7 @@ import re
 from typing import Any, Optional
 
 from fastmcp import Context
+from fastmcp.exceptions import ToolError
 from loguru import logger
 
 from okta_mcp_server.server import mcp
@@ -220,8 +221,8 @@ async def get_logs(
             logger.error(f"Okta API error while retrieving system logs: {err}")
             scope_msg = _check_scope_error(err)
             if scope_msg:
-                return {"error": scope_msg}
-            return {"error": f"Error: {err}"}
+                raise ToolError(scope_msg)
+            raise ToolError(f"Okta API error: {err}")
 
         if not logs:
             logger.info("No system logs found")
@@ -256,9 +257,11 @@ async def get_logs(
         _add_failure_deny_reminder(result, filter)
         return result
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while retrieving system logs: {type(e).__name__}: {e}")
         scope_msg = _check_scope_error(e)
         if scope_msg:
-            return {"error": scope_msg}
-        return {"error": f"Exception: {e}"}
+            raise ToolError(scope_msg)
+        raise ToolError(f"Exception: {e}") from e

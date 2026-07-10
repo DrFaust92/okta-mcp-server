@@ -23,6 +23,24 @@ LOG_FILE = os.environ.get("OKTA_LOG_FILE")
 MCP_TRANSPORT = os.environ.get("MCP_TRANSPORT", "stdio")
 
 
+def _resolve_version() -> str:
+    """Version reported by ``/health``.
+
+    Prefer ``APP_VERSION`` (set by the deployment to the image tag) so ``/health``
+    reflects the *running build*, not the static package version baked into the
+    wheel. Fall back to the installed package metadata, then ``"dev"``.
+    """
+    env_version = os.environ.get("APP_VERSION")
+    if env_version:
+        return env_version
+    from importlib import metadata
+
+    try:
+        return metadata.version("okta-mcp-server")
+    except metadata.PackageNotFoundError:
+        return "dev"
+
+
 @dataclass
 class OktaAppContext:
     okta_auth_manager: OktaAuthManager | None = None
@@ -144,15 +162,10 @@ else:
 # either path. Always public, never authenticated.
 
 if MCP_TRANSPORT == "streamable-http":
-    from importlib import metadata as _metadata
-
     from starlette.requests import Request as _Request
     from starlette.responses import JSONResponse as _JSONResponse
 
-    try:
-        _PACKAGE_VERSION = _metadata.version("okta-mcp-server")
-    except _metadata.PackageNotFoundError:
-        _PACKAGE_VERSION = "dev"
+    _PACKAGE_VERSION = _resolve_version()
 
     @mcp.custom_route("/", methods=["GET"])
     @mcp.custom_route("/health", methods=["GET"])

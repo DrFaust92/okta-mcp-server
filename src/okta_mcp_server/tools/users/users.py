@@ -8,6 +8,7 @@
 from typing import Optional
 
 from fastmcp import Context
+from fastmcp.exceptions import ToolError
 from loguru import logger
 
 from okta_mcp_server.server import mcp
@@ -91,7 +92,7 @@ async def list_users(
 
         if err:
             logger.error(f"Okta API error while listing users: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         if not users:
             logger.info("No users found")
@@ -111,9 +112,11 @@ async def list_users(
             logger.info(f"Successfully retrieved {len(users)} users")
             return create_paginated_response(summarize_users(users), response, fetch_all_used=fetch_all)
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while listing users: {type(e).__name__}: {e}")
-        return {"error": f"Exception: {e}"}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -138,7 +141,7 @@ async def get_user_profile_attributes(ctx: Context | None = None):
 
         if err:
             logger.error(f"Okta API error while fetching profile attributes: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         if users and len(users) > 0:
             attributes = vars(users[0].profile)
@@ -148,9 +151,11 @@ async def get_user_profile_attributes(ctx: Context | None = None):
 
         logger.warning("No users found in the organization")
         return users  # no user has been created yet
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while fetching profile attributes: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -181,7 +186,7 @@ async def list_user_groups(
 
         if err:
             logger.error(f"Okta API error while listing groups for user {user_id}: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         if not groups:
             logger.info(f"No groups found for user {user_id}")
@@ -189,9 +194,11 @@ async def list_user_groups(
 
         logger.info(f"Successfully retrieved {len(groups)} groups for user {user_id}")
         return summarize_groups(groups)
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while listing groups for user {user_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -219,7 +226,7 @@ async def get_user(user_id: str, ctx: Context | None = None):
 
         if err:
             logger.error(f"Okta API error while getting user {user_id}: {err}")
-            return [f"Error: {err}"]
+            raise ToolError(f"Okta API error: {err}")
 
         if user is None:
             logger.info(f"User not found: {user_id}")
@@ -227,9 +234,11 @@ async def get_user(user_id: str, ctx: Context | None = None):
 
         logger.info(f"Successfully retrieved user: {user_id}")
         return [summarize_user(user)]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while getting user {user_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -259,13 +268,15 @@ async def create_user(profile: dict, ctx: Context | None = None):
 
         if err:
             logger.error(f"Okta API error while creating user: {err}")
-            return [f"Error: {err}"]
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully created user: {user.id if user else 'unknown'}")
         return [summarize_user(user)]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while creating user: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -295,13 +306,15 @@ async def update_user(user_id: str, profile: dict, ctx: Context | None = None):
 
         if err:
             logger.error(f"Okta API error while updating user {user_id}: {err}")
-            return [f"Error: {err}"]
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully updated user: {user_id}")
         return [summarize_user(user)]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while updating user {user_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -330,13 +343,15 @@ async def deactivate_user(user_id: str, ctx: Context | None = None):
 
         if err:
             logger.error(f"Okta API error while deactivating user {user_id}: {err}")
-            return [f"Error: {err}"]
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully deactivated user: {user_id}")
         return [f"User {user_id} deactivated successfully."]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while deactivating user {user_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -364,10 +379,12 @@ async def delete_deactivated_user(user_id: str, ctx: Context | None = None):
 
         if err:
             logger.error(f"Okta API error while deleting user {user_id}: {err}")
-            return [f"Error: {err}"]
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully deleted user: {user_id}")
         return [f"User {user_id} deleted successfully."]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while deleting user {user_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e

@@ -8,6 +8,7 @@
 from typing import Any, Dict, Optional
 
 from fastmcp import Context
+from fastmcp.exceptions import ToolError
 from loguru import logger
 
 from okta_mcp_server.server import mcp
@@ -75,7 +76,7 @@ async def list_policies(
 
         if err:
             logger.error(f"Error listing policies: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         if not policies:
             logger.info("No policies found")
@@ -86,9 +87,11 @@ async def list_policies(
             "policies": summarize_policies([_obj_to_dict(policy) for policy in policies]),
         }
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception listing policies: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -110,13 +113,15 @@ async def get_policy(ctx: Context, policy_id: str):
 
         if err:
             logger.error(f"Error getting policy {policy_id}: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return summarize_policy(_obj_to_dict(policy)) if policy else None
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception getting policy: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -145,13 +150,15 @@ async def create_policy(ctx: Context, policy_data: Dict[str, Any]):
 
         if err:
             logger.error(f"Error creating policy: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return summarize_policy(_obj_to_dict(policy)) if policy else None
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception creating policy: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -174,13 +181,15 @@ async def update_policy(ctx: Context, policy_id: str, policy_data: Dict[str, Any
 
         if err:
             logger.error(f"Error updating policy {policy_id}: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return summarize_policy(_obj_to_dict(policy)) if policy else None
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception updating policy: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -202,13 +211,15 @@ async def delete_policy(ctx: Context, policy_id: str):
 
         if err:
             logger.error(f"Error deleting policy {policy_id}: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return {"success": True, "message": f"Policy {policy_id} deleted successfully"}
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception deleting policy: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -230,13 +241,15 @@ async def activate_policy(ctx: Context, policy_id: str):
 
         if err:
             logger.error(f"Error activating policy {policy_id}: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return {"success": True, "message": f"Policy {policy_id} activated successfully"}
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception activating policy: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -258,13 +271,15 @@ async def deactivate_policy(ctx: Context, policy_id: str):
 
         if err:
             logger.error(f"Error deactivating policy {policy_id}: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return {"success": True, "message": f"Policy {policy_id} deactivated successfully"}
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception deactivating policy: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -290,7 +305,7 @@ async def list_policy_rules(ctx: Context, policy_id: str):
 
         if err:
             logger.error(f"Error listing policy rules: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         if not rules:
             logger.info("No policy rules found")
@@ -302,9 +317,11 @@ async def list_policy_rules(ctx: Context, policy_id: str):
             "next_page_token": extract_after_cursor(resp) if resp else None,
         }
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception listing policy rules: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -327,13 +344,15 @@ async def get_policy_rule(ctx: Context, policy_id: str, rule_id: str):
 
         if err:
             logger.error(f"Error getting policy rule: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return summarize_policy_rule(_obj_to_dict(rule)) if rule else None
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception getting policy rule: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -361,13 +380,15 @@ async def create_policy_rule(ctx: Context, policy_id: str, rule_data: Dict[str, 
 
         if err:
             logger.error(f"Error creating policy rule: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return summarize_policy_rule(_obj_to_dict(rule)) if rule else None
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception creating policy rule: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -391,13 +412,15 @@ async def update_policy_rule(ctx: Context, policy_id: str, rule_id: str, rule_da
 
         if err:
             logger.error(f"Error updating policy rule: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return summarize_policy_rule(_obj_to_dict(rule)) if rule else None
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception updating policy rule: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -420,13 +443,15 @@ async def delete_policy_rule(ctx: Context, policy_id: str, rule_id: str):
 
         if err:
             logger.error(f"Error deleting policy rule: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return {"success": True, "message": f"Rule {rule_id} deleted successfully"}
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception deleting policy rule: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -449,13 +474,15 @@ async def activate_policy_rule(ctx: Context, policy_id: str, rule_id: str):
 
         if err:
             logger.error(f"Error activating policy rule: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return {"success": True, "message": f"Rule {rule_id} activated successfully"}
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception activating policy rule: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -478,10 +505,12 @@ async def deactivate_policy_rule(ctx: Context, policy_id: str, rule_id: str):
 
         if err:
             logger.error(f"Error deactivating policy rule: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         return {"success": True, "message": f"Rule {rule_id} deactivated successfully"}
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception deactivating policy rule: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e

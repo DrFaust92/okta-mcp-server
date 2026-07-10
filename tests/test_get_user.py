@@ -10,6 +10,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastmcp.exceptions import ToolError
 
 from okta_mcp_server.tools.users.users import get_user
 
@@ -46,9 +47,8 @@ async def test_get_user_returns_error_string_on_okta_err(mock_get_client):
     client.get_user.return_value = (None, None, "API Error: not found")
     mock_get_client.return_value = client
 
-    result = await get_user(user_id="00u123")
-
-    assert "Error" in result[0]
+    with pytest.raises(ToolError):
+        await get_user(user_id="00u123")
 
 
 @pytest.mark.asyncio

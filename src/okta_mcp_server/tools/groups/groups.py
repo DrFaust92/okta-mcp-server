@@ -8,6 +8,7 @@
 from typing import Optional
 
 from fastmcp import Context
+from fastmcp.exceptions import ToolError
 from loguru import logger
 
 from okta_mcp_server.server import mcp
@@ -89,7 +90,7 @@ async def list_groups(
 
         if err:
             logger.error(f"Okta API error while listing groups: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         if not groups:
             logger.info("No groups found")
@@ -111,9 +112,11 @@ async def list_groups(
             logger.info(f"Successfully retrieved {len(groups)} groups")
             return create_paginated_response(summarize_groups(groups), response, fetch_all_used=fetch_all)
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while listing groups: {type(e).__name__}: {e}")
-        return {"error": f"Exception: {e}"}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -141,13 +144,15 @@ async def get_group(group_id: str, ctx: Context | None = None):
 
         if err:
             logger.error(f"Okta API error while getting group {group_id}: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully retrieved group: {group_id}")
         return [summarize_group(group)]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while getting group {group_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -176,13 +181,15 @@ async def create_group(profile: dict, ctx: Context | None = None):
 
         if err:
             logger.error(f"Okta API error while creating group: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully created group: {group.id if group else 'unknown'}")
         return [summarize_group(group)]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while creating group: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -252,6 +259,8 @@ async def confirm_delete_group(group_id: str, confirmation: str, ctx: Context | 
 
         logger.info(f"Successfully deleted group: {group_id}")
         return [{"message": f"Group {group_id} deleted successfully"}]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while deleting group {group_id}: {type(e).__name__}: {e}")
         return [{"error": f"Exception: {e}"}]
@@ -285,13 +294,15 @@ async def update_group(group_id: str, profile: dict, ctx: Context | None = None)
 
         if err:
             logger.error(f"Okta API error while updating group {group_id}: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully updated group: {group_id}")
         return [summarize_group(group)]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while updating group {group_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -350,7 +361,7 @@ async def list_group_users(
 
         if err:
             logger.error(f"Okta API error while listing group users for {group_id}: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         if not users:
             logger.info(f"No users found in group {group_id}")
@@ -373,9 +384,11 @@ async def list_group_users(
             logger.info(f"Successfully retrieved {len(users)} users from group {group_id}")
             return create_paginated_response(summarize_users(users), response, fetch_all_used=fetch_all)
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while listing users in group {group_id}: {type(e).__name__}: {e}")
-        return {"error": f"Exception: {e}"}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -403,15 +416,17 @@ async def list_group_apps(group_id: str, ctx: Context | None = None):
 
         if err:
             logger.error(f"Okta API error while listing applications for group {group_id}: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         app_count = len(apps) if apps else 0
         logger.info(f"Successfully retrieved {app_count} applications for group {group_id}")
 
         return summarize_applications(apps or [])
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while listing applications for group {group_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -452,13 +467,15 @@ async def add_user_to_group(group_id: str, user_id: str, ctx: Context | None = N
 
         if err:
             logger.error(f"Okta API error while adding user {user_id} to group {group_id}: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully added user {user_id} to group {group_id}")
         return [{"message": "User added to group successfully"}]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while adding user {user_id} to group {group_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -487,10 +504,12 @@ async def remove_user_from_group(group_id: str, user_id: str, ctx: Context | Non
 
         if err:
             logger.error(f"Okta API error while removing user {user_id} from group {group_id}: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully removed user {user_id} from group {group_id}")
         return [{"message": "User removed from group successfully"}]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while removing user {user_id} from group {group_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e

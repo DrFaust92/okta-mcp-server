@@ -12,6 +12,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastmcp.exceptions import ToolError
 
 from okta_mcp_server.tools.policies.policies import (
     deactivate_policy,
@@ -48,9 +49,8 @@ class TestDeletePolicyElicitation:
         client.delete_policy.return_value = (None, None, "API Error: policy not found")
         mock_get_client.return_value = client
 
-        result = await delete_policy(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID)
-
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await delete_policy(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID)
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.policies.policies.get_okta_client")
@@ -59,9 +59,8 @@ class TestDeletePolicyElicitation:
         client.delete_policy.side_effect = Exception("Connection refused")
         mock_get_client.return_value = client
 
-        result = await delete_policy(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID)
-
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await delete_policy(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID)
 
 
 class TestDeletePolicyFallback:
@@ -112,9 +111,8 @@ class TestDeletePolicyRuleElicitation:
         client.delete_policy_rule.return_value = (None, None, "API Error: rule not found")
         mock_get_client.return_value = client
 
-        result = await delete_policy_rule(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID, rule_id=RULE_ID)
-
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await delete_policy_rule(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID, rule_id=RULE_ID)
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.policies.policies.get_okta_client")
@@ -123,9 +121,8 @@ class TestDeletePolicyRuleElicitation:
         client.delete_policy_rule.side_effect = Exception("Connection refused")
         mock_get_client.return_value = client
 
-        result = await delete_policy_rule(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID, rule_id=RULE_ID)
-
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await delete_policy_rule(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID, rule_id=RULE_ID)
 
 
 class TestDeletePolicyRuleFallback:
@@ -176,9 +173,8 @@ class TestDeactivatePolicyRuleElicitation:
         client.deactivate_policy_rule.return_value = (None, None, "API Error: rule not found")
         mock_get_client.return_value = client
 
-        result = await deactivate_policy_rule(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID, rule_id=RULE_ID)
-
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await deactivate_policy_rule(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID, rule_id=RULE_ID)
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.policies.policies.get_okta_client")
@@ -187,9 +183,8 @@ class TestDeactivatePolicyRuleElicitation:
         client.deactivate_policy_rule.side_effect = Exception("Connection refused")
         mock_get_client.return_value = client
 
-        result = await deactivate_policy_rule(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID, rule_id=RULE_ID)
-
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await deactivate_policy_rule(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID, rule_id=RULE_ID)
 
 
 class TestDeactivatePolicyRuleFallback:
@@ -238,9 +233,8 @@ class TestDeactivatePolicyElicitation:
         client.deactivate_policy.return_value = (None, None, "API Error: policy not found")
         mock_get_client.return_value = client
 
-        result = await deactivate_policy(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID)
-
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await deactivate_policy(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID)
 
     @pytest.mark.asyncio
     @patch("okta_mcp_server.tools.policies.policies.get_okta_client")
@@ -249,9 +243,8 @@ class TestDeactivatePolicyElicitation:
         client.deactivate_policy.side_effect = Exception("Connection refused")
         mock_get_client.return_value = client
 
-        result = await deactivate_policy(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID)
-
-        assert "error" in result
+        with pytest.raises(ToolError):
+            await deactivate_policy(ctx=ctx_elicit_accept_true, policy_id=POLICY_ID)
 
 
 class TestDeactivatePolicyFallback:
