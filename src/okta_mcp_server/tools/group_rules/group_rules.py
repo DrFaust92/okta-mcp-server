@@ -8,6 +8,7 @@
 from typing import Optional
 
 from fastmcp import Context
+from fastmcp.exceptions import ToolError
 from loguru import logger
 
 from okta_mcp_server.server import mcp
@@ -96,7 +97,7 @@ async def list_group_rules(
 
         if err:
             logger.error(f"Okta API error while listing group rules: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         if not rules:
             logger.info("No group rules found")
@@ -118,9 +119,11 @@ async def list_group_rules(
             logger.info(f"Successfully retrieved {len(rules)} group rules")
             return create_paginated_response(summarize_group_rules(rules), response, fetch_all_used=fetch_all)
 
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while listing group rules: {type(e).__name__}: {e}")
-        return {"error": f"Exception: {e}"}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -151,10 +154,12 @@ async def get_group_rule(rule_id: str, ctx: Context | None = None, expand: Optio
 
         if err:
             logger.error(f"Okta API error while getting group rule {rule_id}: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully retrieved group rule: {rule_id}")
         return [summarize_group_rule(rule)]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while getting group rule {rule_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e

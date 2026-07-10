@@ -8,6 +8,7 @@
 from typing import Any, Dict, Optional
 
 from fastmcp import Context
+from fastmcp.exceptions import ToolError
 from loguru import logger
 
 from okta_mcp_server.server import mcp
@@ -89,7 +90,7 @@ async def list_applications(
 
         if err:
             logger.error(f"Okta API error while listing applications: {err}")
-            return {"error": f"Error: {err}"}
+            raise ToolError(f"Okta API error: {err}")
 
         if not apps:
             logger.info("No applications found")
@@ -109,9 +110,11 @@ async def list_applications(
 
         logger.info(f"Successfully retrieved {len(apps)} applications")
         return create_paginated_response(summarize_applications(apps), response, fetch_all_used=fetch_all)
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while listing applications: {type(e).__name__}: {e}")
-        return {"error": f"Exception: {e}"}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -142,13 +145,15 @@ async def get_application(ctx: Context, app_id: str, expand: Optional[str] = Non
 
         if err:
             logger.error(f"Okta API error while getting application {app_id}: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully retrieved application: {app_id}")
         return summarize_application(app)
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while getting application {app_id}: {type(e).__name__}: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -177,13 +182,15 @@ async def create_application(ctx: Context, app_config: Dict[str, Any], activate:
 
         if err:
             logger.error(f"Okta API error while creating application: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info("Successfully created application")
         return summarize_application(app)
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while creating application: {type(e).__name__}: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -210,13 +217,15 @@ async def update_application(ctx: Context, app_id: str, app_config: Dict[str, An
 
         if err:
             logger.error(f"Okta API error while updating application {app_id}: {err}")
-            return {"error": str(err)}
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully updated application: {app_id}")
         return summarize_application(app)
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while updating application {app_id}: {type(e).__name__}: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -277,13 +286,15 @@ async def confirm_delete_application(ctx: Context, app_id: str, confirmation: st
 
         if err:
             logger.error(f"Okta API error while deleting application {app_id}: {err}")
-            return [f"Error: {err}"]
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully deleted application: {app_id}")
         return [f"Application {app_id} deleted successfully"]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while deleting application {app_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -309,13 +320,15 @@ async def activate_application(ctx: Context, app_id: str):
 
         if err:
             logger.error(f"Okta API error while activating application {app_id}: {err}")
-            return [f"Error: {err}"]
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully activated application: {app_id}")
         return [f"Application {app_id} activated successfully"]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while activating application {app_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e
 
 
 @mcp.tool()
@@ -341,10 +354,12 @@ async def deactivate_application(ctx: Context, app_id: str):
 
         if err:
             logger.error(f"Okta API error while deactivating application {app_id}: {err}")
-            return [f"Error: {err}"]
+            raise ToolError(f"Okta API error: {err}")
 
         logger.info(f"Successfully deactivated application: {app_id}")
         return [f"Application {app_id} deactivated successfully"]
+    except ToolError:
+        raise
     except Exception as e:
         logger.error(f"Exception while deactivating application {app_id}: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        raise ToolError(f"Exception: {e}") from e

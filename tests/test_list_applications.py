@@ -9,6 +9,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastmcp.exceptions import ToolError
 
 from okta_mcp_server.tools.applications.applications import list_applications
 
@@ -77,10 +78,8 @@ async def test_okta_error_returns_error_dict(mock_get_client):
     client.list_applications.return_value = (None, _response(), "boom")
     mock_get_client.return_value = client
 
-    result = await list_applications(ctx=MagicMock(request_context=None))
-
-    assert isinstance(result, dict)
-    assert "error" in result
+    with pytest.raises(ToolError):
+        await list_applications(ctx=MagicMock(request_context=None))
 
 
 @pytest.mark.asyncio
