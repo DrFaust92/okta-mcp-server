@@ -208,8 +208,12 @@ def main():
     _stdlib_logging.getLogger("httpcore").setLevel(_stdlib_logging.WARNING)
 
     # Drop /health probe access-log spam (liveness/readiness hit it every few
-    # seconds). Keeps access logs for real requests.
-    _stdlib_logging.getLogger("uvicorn.access").addFilter(_HealthProbeAccessFilter())
+    # seconds). Keeps access logs for real requests. Toggle off with
+    # OKTA_MCP_SUPPRESS_HEALTH_PROBES=false to restore full probe access logging.
+    from okta_mcp_server.utils.telemetry import suppress_health_probes
+
+    if suppress_health_probes():
+        _stdlib_logging.getLogger("uvicorn.access").addFilter(_HealthProbeAccessFilter())
 
     if LOG_FILE:
         logger.add(

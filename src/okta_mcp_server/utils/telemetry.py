@@ -37,10 +37,33 @@ from loguru import logger
 
 _configured = False
 
+# Toggles (env). HTTP tracing = inbound Starlette request spans. Health-probe
+# suppression drops /health from BOTH access logs and request traces so k8s
+# liveness/readiness noise stays out of Loki/Tempo. Both default on.
+HTTP_TRACING_ENV = "OKTA_MCP_HTTP_TRACING"
+SUPPRESS_HEALTH_PROBES_ENV = "OKTA_MCP_SUPPRESS_HEALTH_PROBES"
+
+
+def _flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
 
 def telemetry_enabled() -> bool:
     """True when an OTLP endpoint is configured, i.e. telemetry should run."""
     return bool(os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"))
+
+
+def http_tracing_enabled() -> bool:
+    """Whether inbound HTTP (Starlette) request spans are enabled."""
+    return _flag(HTTP_TRACING_ENV, True)
+
+
+def suppress_health_probes() -> bool:
+    """Whether /health probe requests are excluded from logs and traces."""
+    return _flag(SUPPRESS_HEALTH_PROBES_ENV, True)
 
 
 def _package_version() -> str:
@@ -101,6 +124,20 @@ def configure_telemetry() -> bool:
         AioHttpClientInstrumentor().instrument()
     except Exception as exc:  # pragma: no cover - optional
         logger.debug(f"telemetry: aiohttp client instrumentation skipped: {exc}")
+
+    # Inbound HTTP request spans. Global instrumentation must run before FastMCP
+    # builds its Starlette app inside mcp.run(). /health probe requests are
+    # excluded from traces when suppression is on (matches the access-log filter).
+    if http_tracing_enabled():
+        try:
+            from opentelemetry.instrumentation.starlette import StarletteInstrumentor
+
+            if suppress_health_probes():
+                os.environ.setdefault("OTEL_PYTHON_STARLETTE_EXCLUDED_URLS", "health")
+            StarletteInstrumentor().instrument()
+            logger.info("telemetry: inbound HTTP request tracing enabled (Starlette)")
+        except Exception as exc:  # pragma: no cover - optional
+            logger.debug(f"telemetry: Starlette instrumentation skipped: {exc}")
 
     _configured = True
     logger.info("telemetry: OpenTelemetry tracing + metrics enabled (OTLP http)")

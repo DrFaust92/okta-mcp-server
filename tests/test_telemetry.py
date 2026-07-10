@@ -54,6 +54,20 @@ def test_telemetry_enabled_reads_env(monkeypatch):
     assert telemetry.telemetry_enabled() is True
 
 
+def test_http_tracing_defaults_on_and_toggles(monkeypatch):
+    monkeypatch.delenv("OKTA_MCP_HTTP_TRACING", raising=False)
+    assert telemetry.http_tracing_enabled() is True
+    monkeypatch.setenv("OKTA_MCP_HTTP_TRACING", "false")
+    assert telemetry.http_tracing_enabled() is False
+
+
+def test_suppress_health_probes_defaults_on_and_toggles(monkeypatch):
+    monkeypatch.delenv("OKTA_MCP_SUPPRESS_HEALTH_PROBES", raising=False)
+    assert telemetry.suppress_health_probes() is True
+    monkeypatch.setenv("OKTA_MCP_SUPPRESS_HEALTH_PROBES", "0")
+    assert telemetry.suppress_health_probes() is False
+
+
 @pytest.mark.parametrize(
     "result,expected",
     [
