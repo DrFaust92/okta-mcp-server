@@ -12,6 +12,11 @@ from loguru import logger
 
 from okta_mcp_server.server import mcp
 from okta_mcp_server.utils.client import _resolve_manager, get_okta_client
+from okta_mcp_server.utils.pagination import (
+    create_paginated_response,
+    has_next_page,
+    paginate_all_results,
+)
 from okta_mcp_server.utils.summarize import summarize_application, summarize_applications
 from okta_mcp_server.utils.validation import validate_ids
 
@@ -25,8 +30,9 @@ async def list_applications(
     filter: Optional[str] = None,
     expand: Optional[str] = None,
     include_non_deleted: Optional[bool] = None,
+    fetch_all: bool = False,
 ):
-    """List all applications from the Okta organization.
+    """List all applications from the Okta organization with pagination support.
 
     Parameters:
         q (str, optional): Searches for applications by label, property, or link
@@ -36,9 +42,16 @@ async def list_applications(
         expand (str, optional): Expands the app user object to include the user's profile or expand the app group
         object to include the group's profile
         include_non_deleted (bool, optional): Include non-deleted applications in the results
+        fetch_all (bool, optional): If True, automatically fetch all pages of results. Default: False.
 
     Returns:
-        List containing the applications from the Okta organization.
+        Dict containing:
+        - items: List of application objects
+        - total_fetched: Number of applications returned
+        - has_more: Boolean indicating if more results are available
+        - next_cursor: Cursor for the next page (if has_more is True)
+        - fetch_all_used: Boolean indicating if fetch_all was used
+        - pagination_info: Additional pagination metadata (when fetch_all=True)
     """
     logger.info("Listing applications from Okta organization")
     logger.debug(f"Query parameters: q='{q}', filter='{filter}', limit={limit}")
@@ -72,21 +85,33 @@ async def list_applications(
             query_params["includeNonDeleted"] = include_non_deleted
 
         logger.debug("Calling Okta API to list applications")
-        apps, _, err = await client.list_applications(**query_params)
+        apps, response, err = await client.list_applications(**query_params)
 
         if err:
             logger.error(f"Okta API error while listing applications: {err}")
-            return [f"Error: {err}"]
+            return {"error": f"Error: {err}"}
 
         if not apps:
             logger.info("No applications found")
-            return []
+            return create_paginated_response([], response, fetch_all_used=fetch_all)
+
+        if fetch_all and has_next_page(response):
+            logger.info(f"fetch_all=True, auto-paginating from initial {len(apps)} applications")
+            all_apps, pagination_info = await paginate_all_results(
+                client.list_applications, query_params, apps, response
+            )
+            logger.info(
+                f"Successfully retrieved {len(all_apps)} applications across {pagination_info['pages_fetched']} pages"
+            )
+            return create_paginated_response(
+                summarize_applications(all_apps), response, fetch_all_used=True, pagination_info=pagination_info
+            )
 
         logger.info(f"Successfully retrieved {len(apps)} applications")
-        return summarize_applications(apps)
+        return create_paginated_response(summarize_applications(apps), response, fetch_all_used=fetch_all)
     except Exception as e:
         logger.error(f"Exception while listing applications: {type(e).__name__}: {e}")
-        return [f"Exception: {e}"]
+        return {"error": f"Exception: {e}"}
 
 
 @mcp.tool()
