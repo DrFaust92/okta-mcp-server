@@ -195,6 +195,16 @@ def main():
     )
 
     logger.info("Starting Okta MCP Server")
+
+    # OpenTelemetry traces + metrics. No-op unless OTEL_EXPORTER_OTLP_ENDPOINT is
+    # set, so local/stdio runs are unaffected; the deployment points it at the
+    # cluster OTLP collector to activate per-tool spans and error-rate metrics.
+    from okta_mcp_server.utils.telemetry import build_tool_middleware, configure_telemetry
+
+    if configure_telemetry():
+        mcp.add_middleware(build_tool_middleware())
+        logger.info("OpenTelemetry tool-call middleware registered")
+
     from okta_mcp_server.tools.applications import applications  # noqa: F401
     from okta_mcp_server.tools.group_rules import group_rules  # noqa: F401
     from okta_mcp_server.tools.groups import groups  # noqa: F401
