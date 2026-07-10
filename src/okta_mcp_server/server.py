@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import logging as _stdlib_logging
 import os
 import sys
 from collections.abc import AsyncIterator
@@ -21,6 +22,21 @@ from okta_mcp_server.utils.auth.auth_manager import OktaAuthManager
 
 LOG_FILE = os.environ.get("OKTA_LOG_FILE")
 MCP_TRANSPORT = os.environ.get("MCP_TRANSPORT", "stdio")
+
+
+class _HealthProbeAccessFilter(_stdlib_logging.Filter):
+    """Drop uvicorn access-log lines for /health probe requests.
+
+    K8s liveness/readiness hit /health every few seconds (~24x/min), which
+    uvicorn's access logger would otherwise emit as noise to stdout/Loki. Real
+    request access logs are kept.
+    """
+
+    def filter(self, record: _stdlib_logging.LogRecord) -> bool:
+        try:
+            return "/health" not in record.getMessage()
+        except Exception:  # pragma: no cover - defensive
+            return True
 
 
 def _resolve_version() -> str:
@@ -188,10 +204,12 @@ def main():
     # which include OAuth bearer tokens in query strings (e.g.
     # `?access_token=...`) for some Okta endpoints — leaving them at INFO
     # leaks credentials into stdout / log aggregators.
-    import logging as _stdlib_logging
-
     _stdlib_logging.getLogger("httpx").setLevel(_stdlib_logging.WARNING)
     _stdlib_logging.getLogger("httpcore").setLevel(_stdlib_logging.WARNING)
+
+    # Drop /health probe access-log spam (liveness/readiness hit it every few
+    # seconds). Keeps access logs for real requests.
+    _stdlib_logging.getLogger("uvicorn.access").addFilter(_HealthProbeAccessFilter())
 
     if LOG_FILE:
         logger.add(

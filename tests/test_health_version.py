@@ -2,11 +2,34 @@
 # Copyright © 2026-Present, Okta, Inc.
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 
-"""Tests for /health version resolution."""
+"""Tests for /health version resolution and health-probe log filtering."""
 
 from __future__ import annotations
 
-from okta_mcp_server.server import _resolve_version
+import logging
+
+from okta_mcp_server.server import _HealthProbeAccessFilter, _resolve_version
+
+
+def _access_record(path: str) -> logging.LogRecord:
+    # Mirrors uvicorn.access's record shape: msg template + positional args.
+    return logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg='%s - "%s %s HTTP/%s" %s',
+        args=("172.23.32.161:41128", "GET", path, "1.1", 200),
+        exc_info=None,
+    )
+
+
+def test_health_probe_lines_are_dropped():
+    assert _HealthProbeAccessFilter().filter(_access_record("/health")) is False
+
+
+def test_real_request_lines_are_kept():
+    assert _HealthProbeAccessFilter().filter(_access_record("/mcp")) is True
 
 
 def test_prefers_app_version_env(monkeypatch):
