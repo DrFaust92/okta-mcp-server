@@ -125,6 +125,17 @@ def configure_telemetry() -> bool:
     except Exception as exc:  # pragma: no cover - optional
         logger.debug(f"telemetry: aiohttp client instrumentation skipped: {exc}")
 
+    # OAuth token introspection to Okta goes through httpx (authlib), not aiohttp,
+    # so instrument it too — otherwise the auth hot path is untraced.
+    try:
+        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
+        HTTPXClientInstrumentor().instrument()
+    except Exception as exc:  # pragma: no cover - optional
+        logger.debug(f"telemetry: httpx client instrumentation skipped: {exc}")
+
+    _install_loguru_trace_correlation()
+
     # Inbound HTTP request spans. Global instrumentation must run before FastMCP
     # builds its Starlette app inside mcp.run(). /health probe requests are
     # excluded from traces when suppression is on (matches the access-log filter).
@@ -142,6 +153,32 @@ def configure_telemetry() -> bool:
     _configured = True
     logger.info("telemetry: OpenTelemetry tracing + metrics enabled (OTLP http)")
     return True
+
+
+def _otel_loguru_patcher(record: Any) -> None:
+    """Inject the active trace/span id into each loguru record's ``extra``.
+
+    With ``serialize=True`` these surface in the JSON logs as
+    ``extra.trace_id`` / ``extra.span_id``, letting Grafana link a Loki line to
+    its Tempo trace (configure a Loki derived field on ``trace_id``). No-op when
+    there is no active span.
+    """
+    from opentelemetry import trace
+
+    ctx = trace.get_current_span().get_span_context()
+    if ctx.is_valid:
+        record["extra"]["trace_id"] = f"{ctx.trace_id:032x}"
+        record["extra"]["span_id"] = f"{ctx.span_id:016x}"
+
+
+def _install_loguru_trace_correlation() -> None:
+    """Attach the trace-context patcher to loguru (handlers left untouched)."""
+    try:
+        from loguru import logger as _loguru
+
+        _loguru.configure(patcher=_otel_loguru_patcher)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.debug(f"telemetry: loguru trace correlation skipped: {exc}")
 
 
 def _result_is_error(result: Any) -> bool:

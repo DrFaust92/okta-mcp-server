@@ -68,6 +68,23 @@ def test_suppress_health_probes_defaults_on_and_toggles(monkeypatch):
     assert telemetry.suppress_health_probes() is False
 
 
+def test_loguru_patcher_injects_trace_ids():
+    from opentelemetry.sdk.trace import TracerProvider
+
+    tracer = TracerProvider().get_tracer("test")  # local provider, valid spans
+    record = {"extra": {}}
+    with tracer.start_as_current_span("s"):
+        telemetry._otel_loguru_patcher(record)
+    assert len(record["extra"]["trace_id"]) == 32
+    assert len(record["extra"]["span_id"]) == 16
+
+
+def test_loguru_patcher_noop_without_active_span():
+    record = {"extra": {}}
+    telemetry._otel_loguru_patcher(record)
+    assert record["extra"] == {}
+
+
 @pytest.mark.parametrize(
     "result,expected",
     [
