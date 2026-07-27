@@ -185,7 +185,7 @@ if MCP_TRANSPORT == "streamable-http":
 
     @mcp.custom_route("/", methods=["GET"])
     @mcp.custom_route("/health", methods=["GET"])
-    async def _health_check(request: _Request) -> _JSONResponse:  # noqa: RUF029 - Starlette requires async handlers
+    async def _health_check(request: _Request) -> _JSONResponse:  # ruff: ignore[unused-async] - Starlette requires async handlers
         return _JSONResponse(
             {
                 "status": "healthy",
@@ -240,14 +240,14 @@ def main():
         mcp.add_middleware(build_tool_middleware())
         logger.info("OpenTelemetry tool-call middleware registered")
 
-    from okta_mcp_server.tools.applications import applications  # noqa: F401
-    from okta_mcp_server.tools.group_rules import group_rules  # noqa: F401
-    from okta_mcp_server.tools.groups import groups  # noqa: F401
-    from okta_mcp_server.tools.policies import policies  # noqa: F401
-    from okta_mcp_server.tools.system_logs import system_logs  # noqa: F401
-    from okta_mcp_server.tools.users import users  # noqa: F401
+    from okta_mcp_server.tools.applications import applications  # ruff: ignore[unused-import]
+    from okta_mcp_server.tools.group_rules import group_rules  # ruff: ignore[unused-import]
+    from okta_mcp_server.tools.groups import groups  # ruff: ignore[unused-import]
+    from okta_mcp_server.tools.policies import policies  # ruff: ignore[unused-import]
+    from okta_mcp_server.tools.system_logs import system_logs  # ruff: ignore[unused-import]
+    from okta_mcp_server.tools.users import users  # ruff: ignore[unused-import]
 
     if MCP_TRANSPORT == "streamable-http":
-        mcp.run(transport=cast(Literal["streamable-http"], MCP_TRANSPORT), host="0.0.0.0", port=8000)
+        mcp.run(transport=MCP_TRANSPORT, host="0.0.0.0", port=8000)
     else:
         mcp.run(transport=cast(Literal["stdio", "sse", "streamable-http"], MCP_TRANSPORT))

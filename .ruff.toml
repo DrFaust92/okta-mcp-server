@@ -31,7 +31,7 @@ select = ["F",      # Pyflakes
 
 # `ruff format` handles line length for code; long lines that remain are
 # license-header boilerplate and other intentionally untouched text.
-ignore = ["E501"]
+ignore = ["line-too-long"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
