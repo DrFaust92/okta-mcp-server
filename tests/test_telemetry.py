@@ -107,7 +107,7 @@ async def test_middleware_passes_result_through():
     mw = telemetry.build_tool_middleware()
     sentinel = _FakeResult(content=[_Block("Successfully retrieved 5 groups")])
 
-    async def call_next(_ctx):  # noqa: RUF029 - middleware awaits this callable
+    async def call_next(_ctx):  # ruff: ignore[unused-async] - middleware awaits this callable
         return sentinel
 
     out = await mw.on_call_tool(_FakeContext(_FakeMessage("list_groups")), call_next)
@@ -119,7 +119,7 @@ async def test_middleware_handles_error_result_without_raising():
     mw = telemetry.build_tool_middleware()
     err = _FakeResult(content=[_Block("Exception: ValidationError ...")])
 
-    async def call_next(_ctx):  # noqa: RUF029 - middleware awaits this callable
+    async def call_next(_ctx):  # ruff: ignore[unused-async] - middleware awaits this callable
         return err
 
     out = await mw.on_call_tool(_FakeContext(_FakeMessage("list_group_apps")), call_next)
@@ -130,7 +130,7 @@ async def test_middleware_handles_error_result_without_raising():
 async def test_middleware_reraises_exceptions():
     mw = telemetry.build_tool_middleware()
 
-    async def call_next(_ctx):  # noqa: RUF029 - middleware awaits this callable
+    async def call_next(_ctx):  # ruff: ignore[unused-async] - middleware awaits this callable
         raise RuntimeError("kaboom")
 
     with pytest.raises(RuntimeError, match="kaboom"):
