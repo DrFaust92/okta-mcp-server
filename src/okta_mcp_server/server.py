@@ -153,12 +153,12 @@ if MCP_TRANSPORT == "streamable-http":
         require_authorization_consent=_require_consent,
         extra_authorize_params={"scope": _okta_scopes},
         jwt_signing_key=_jwt_signing_key,
+        # Without this, OAuthProxy derives its default scope from
+        # token_verifier.required_scopes — None for introspection — so CIMD and DCR
+        # clients (e.g. Claude Code) register with no scopes and hit invalid_scope on
+        # authorize. Also advertises the set on the /.well-known metadata endpoints.
+        valid_scopes=_okta_scopes.split(),
     )
-    # Fix CIMD clients (e.g. Claude Code): OAuthProxy initializes _default_scope_str
-    # from token_verifier.required_scopes which is None here, leaving CIMD clients
-    # registered with no scopes → invalid_scope on authorize.
-    if _auth._cimd_manager is not None:
-        _auth._cimd_manager.default_scope = _okta_scopes
 
     mcp = FastMCP(
         "Okta IDaaS MCP Server",
